@@ -11,8 +11,11 @@ This product includes software developed by StackSpine, Inc.
 
 PATENT NOTICE
 
-StackSpine's pre-request cost projection and budget enforcement technology
-is the subject of one or more pending patent applications. The Apache 2.0
+StackSpine is the subject of one or more pending patent applications, including:
+  1. "Pre-Request Budget Enforcement in a Multi-Model AI Routing System"
+  2. "Compliance-Driven Route Filtering in a Multi-Model AI Control Plane"
+
+The Apache 2.0
 patent grant (Section 3) applies to Contributions to this repository.
 
 ---
