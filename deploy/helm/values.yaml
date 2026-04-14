@@ -1,0 +1,56 @@
+# StackSpine Helm Values
+replicaCount: 2
+
+image:
+  repository: ghcr.io/stackspine/gateway
+  tag: latest
+  pullPolicy: IfNotPresent
+
+service:
+  type: ClusterIP
+  port: 8000
+
+ingress:
+  enabled: true
+  className: nginx
+  annotations:
+    cert-manager.io/cluster-issuer: letsencrypt-prod
+  hosts:
+    - host: api.stackspine.example.com
+      paths:
+        - path: /
+          pathType: Prefix
+  tls:
+    - secretName: stackspine-tls
+      hosts:
+        - api.stackspine.example.com
+
+resources:
+  limits:
+    cpu: 500m
+    memory: 512Mi
+  requests:
+    cpu: 100m
+    memory: 128Mi
+
+autoscaling:
+  enabled: true
+  minReplicas: 2
+  maxReplicas: 10
+  targetCPUUtilizationPercentage: 70
+
+env:
+  SUPABASE_URL: ""
+  SUPABASE_SERVICE_ROLE_KEY: ""
+  LOVABLE_API_KEY: ""
+
+postgres:
+  enabled: true
+  image: supabase/postgres:15.6.1.143
+  storage: 10Gi
+  password: ""
+
+mcpServer:
+  enabled: true
+  replicaCount: 1
+  port: 8001
