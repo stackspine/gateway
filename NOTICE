@@ -1,0 +1,51 @@
+StackSpine Gateway
+Copyright 2026 StackSpine, Inc.
+
+This product is licensed under the Apache License, Version 2.0 (the "License").
+You may obtain a copy of the License at
+
+    http://www.apache.org/licenses/LICENSE-2.0
+
+This product includes software developed by StackSpine, Inc.
+(https://stackspine.com).
+
+PATENT NOTICE
+
+StackSpine's pre-request cost projection and budget enforcement technology
+is the subject of one or more pending patent applications. The Apache 2.0
+patent grant (Section 3) applies to Contributions to this repository.
+
+---
+
+Third-Party Notices
+
+This project uses the following third-party components:
+
+1. Deno (https://deno.com)
+   License: MIT
+   Copyright (c) 2018-2024 the Deno authors
+
+2. Deno Standard Library (https://deno.land/std)
+   License: MIT
+   Copyright (c) 2018-2024 the Deno authors
+
+3. PostgreSQL (https://www.postgresql.org)
+   License: PostgreSQL License (BSD-like)
+   Copyright (c) 1996-2024, The PostgreSQL Global Development Group
+
+SDKs distributed under this project include their own licenses:
+
+4. JavaScript/TypeScript SDK (@stackspine/sdk)
+   License: MIT
+
+5. Python SDK (stackspine)
+   License: MIT
+
+6. Go SDK (github.com/stackspine/sdk-go)
+   License: MIT
+
+7. Ruby SDK (stackspine gem)
+   License: MIT
+
+8. Rust SDK (stackspine crate)
+   License: MIT
