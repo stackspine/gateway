@@ -132,6 +132,8 @@ export class StackSpine {
           throw new RateLimitError(error.message, retryAfter);
         }
         
+        // [Patent 1, Claim 1(f)] — Structured 402 BUDGET_EXCEEDED response.
+        // See "Pre-Request Budget Enforcement in a Multi-Model AI Routing System."
         if (response.status === 402) {
           const details = error.details || {};
           throw new BudgetExceededError(

@@ -186,6 +186,9 @@ module StackSpine
       when 429
         retry_after = body.is_a?(Hash) ? (body["retry_after"] || 60).to_f : 60.0
         raise RateLimitError.new(message, retry_after: retry_after, request_id: request_id)
+      # [Patent 1, Claim 1(f)] — Structured 402 response with BUDGET_EXCEEDED code,
+      #   spend/limit details. See "Pre-Request Budget Enforcement in a Multi-Model
+      #   AI Routing System."
       when 402
         d = details || {}
         raise BudgetExceededError.new(

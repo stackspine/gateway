@@ -71,6 +71,9 @@ def _raise_for_error(status_code: int, body: Any, request_id: Optional[str] = No
             retry_after = float(body.get("retry_after", 60))
         raise RateLimitError(message=message, retry_after=retry_after, request_id=request_id)
 
+    # [Patent 1, Claim 1(f)] — Structured 402 response with BUDGET_EXCEEDED code,
+    #   spend/limit details. See "Pre-Request Budget Enforcement in a Multi-Model
+    #   AI Routing System."
     if status_code == 402:
         limit_usd = float((details or {}).get("limit_usd", 0))
         current = float((details or {}).get("current_spend_usd", 0))
