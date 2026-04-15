@@ -101,7 +101,16 @@ export function selectRoute(routes: RouteWithProfile[], context?: RouteContext):
   let dataPolicyFilteredCount = 0;
   let eligible = routes;
 
-  // Filter by data policy
+  // [Patent 2, Claim 1] — Compliance-driven route filtering: data residency
+  //   policies constrain route selection *before* any payload is transmitted
+  //   to a downstream provider.
+  // [Patent 2, Claim 4] — Policy association matching: each route carries
+  //   zero or more data policy associations (e.g., GDPR, HIPAA) specifying
+  //   allowed geographic regions; only routes whose policies permit the
+  //   detected region survive filtering.
+  // [Patent 2, Claim 5] — Empty-set compliance error: when no routes match
+  //   the required data policy, the system returns an error without
+  //   transmitting any payload to a downstream provider.
   if (context?.data_policy) {
     const policyName = context.data_policy;
     const policyFiltered = eligible.filter(r => {
@@ -115,17 +124,22 @@ export function selectRoute(routes: RouteWithProfile[], context?: RouteContext):
     if (policyFiltered.length > 0) {
       eligible = policyFiltered;
     } else {
+      // [Patent 2, Claim 5] — Compliance error without payload transmission
       throw new Error(`No routes match data policy: ${policyName}`);
     }
   }
 
-  // Filter by region
+  // [Patent 2, Claim 1] — Geographic region filtering: routes tagged with
+  //   a specific region are excluded when they do not match the detected
+  //   caller region; untagged (global) routes serve as fallbacks.
   if (context?.region) {
     eligible = eligible.filter(r => !r.region || r.region === context.region);
     if (eligible.length === 0) eligible = routes.filter(r => !r.region);
   }
 
-  // Filter by conditions
+  // [Patent 2, Claim 6] — Conditional evaluation: surviving candidates
+  //   undergo further filtering via route-level conditions before strategy
+  //   selection.
   if (context) {
     eligible = eligible.filter(r => {
       const passes = evaluateRouteConditions(r, context);
