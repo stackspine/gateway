@@ -212,7 +212,11 @@ serve(async (req) => {
   const traceId = crypto.randomUUID();
   const traceparentHeader = `00-${traceId.replace(/-/g, '')}-${crypto.randomUUID().replace(/-/g, '').substring(0, 16)}-01`;
 
-  // Region detection
+  // [Patent 2, Claim 1] — Geographic region detection: evaluate explicit
+  //   X-Region header first, then CDN-injected CF-IPCountry header, mapped
+  //   to standardized region codes (EU, US, APAC, OTHER) via lookup table.
+  // [Patent 2, Claim 3] — Priority-ordered header evaluation: X-Region
+  //   (explicit) takes precedence over CF-IPCountry (CDN-injected).
   const explicitRegion = req.headers.get('x-region')?.toUpperCase() || null;
   const cfCountry = req.headers.get('cf-ipcountry')?.toUpperCase() || null;
   const detectedRegion = explicitRegion || (cfCountry ? COUNTRY_TO_REGION[cfCountry] || 'OTHER' : null);
