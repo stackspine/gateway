@@ -4,26 +4,29 @@
  */
 
 import type { RouteWithProfile } from "./types.ts";
+import { parseAwsCredentials, signSigV4 } from "./sigv4.ts";
 
 /**
  * AI provider endpoint configurations.
  *
- * All providers below speak the OpenAI chat/completions wire format with
- * Bearer-token auth, except `anthropic` (x-api-key + Messages API) and
- * `google` (x-goog-api-key, handled upstream). They flow through the generic
- * branch in `callProvider()` below, so adding a new OpenAI-compatible host
- * is purely a config addition here.
+ * Most providers below speak the OpenAI chat/completions wire format with
+ * Bearer-token auth. Exceptions handled with dedicated branches in
+ * `callProvider()`:
+ *   - `anthropic`   : x-api-key + Messages API
+ *   - `google`      : x-goog-api-key (handled upstream)
+ *   - `aws_bedrock` : SigV4 signing, Anthropic-on-Bedrock body shape
+ *   - `azure_openai`: deployment-name URL + api-version query + api-key header
  *
- * Custom-auth providers (AWS Bedrock SigV4, Azure OpenAI api-version routing,
- * Google Vertex AI service-account JWT, IBM watsonx IAM, Oracle OCI signing)
- * are intentionally NOT in this map — they need dedicated handlers and ship
- * in a later phase.
+ * Remaining custom-auth providers (Vertex AI service-account JWT, IBM watsonx IAM,
+ * Oracle OCI signing) ship in a later phase.
  */
 export const providerEndpoints: Record<string, { url: string; authHeader: string }> = {
   // ── Native non-OpenAI-compatible (custom request/response handling) ────
   openai: { url: "https://api.openai.com/v1/chat/completions", authHeader: "Authorization" },
   anthropic: { url: "https://api.anthropic.com/v1/messages", authHeader: "x-api-key" },
   google: { url: "https://generativelanguage.googleapis.com/v1beta/models", authHeader: "x-goog-api-key" },
+  aws_bedrock: { url: "", authHeader: "Authorization" }, // base_url=bedrock://{region}
+  azure_openai: { url: "", authHeader: "api-key" }, // base_url=full Azure deployment URL
 
   // ── Frontier labs (OpenAI-compatible) ──────────────────────────────────
   xai: { url: "https://api.x.ai/v1/chat/completions", authHeader: "Authorization" },
