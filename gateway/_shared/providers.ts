@@ -425,3 +425,338 @@ async function callAzure(
     };
   }
 }
+
+/**
+ * Invoke Anthropic Claude on Google Vertex AI.
+ *
+ * Provider config convention:
+ *   base_url            = "vertex://{project_id}/{region}"
+ *                         (e.g. "vertex://my-gcp-proj/us-east5")
+ *   api_key_encrypted   = full service-account JSON (single line, escaped)
+ *   provider_model_name = Vertex publisher model id
+ *                         (e.g. "claude-3-5-sonnet-v2@20241022")
+ *
+ * Currently only Anthropic publisher models are wired (the dominant Vertex
+ * use case for this gateway). Gemini/PaLM go through the existing `google`
+ * provider on Generative Language API.
+ */
+async function callVertex(
+  provider: RouteWithProfile["model_profiles"]["providers_with_key"],
+  modelProfile: RouteWithProfile["model_profiles"],
+  fullMessages: Array<{ role: string; content: string }>,
+  systemPrompt: string | null,
+  maxTokens: number | null,
+  apiKey: string,
+): Promise<{ ok: boolean; status: number; data?: unknown; errorText?: string; response?: Response }> {
+  try {
+    const baseUrl = provider.base_url || "";
+    if (!baseUrl.startsWith("vertex://")) {
+      return {
+        ok: false,
+        status: 500,
+        errorText:
+          'Vertex provider base_url must be formatted as "vertex://{project_id}/{region}", e.g. "vertex://my-proj/us-east5"',
+      };
+    }
+    const stripped = baseUrl.replace("vertex://", "");
+    const [projectId, region] = stripped.split("/");
+    if (!projectId || !region) {
+      return { ok: false, status: 500, errorText: "Vertex base_url must include both project and region" };
+    }
+
+    const modelId = modelProfile.provider_model_name;
+    if (!modelId.startsWith("claude-")) {
+      return {
+        ok: false,
+        status: 501,
+        errorText: `Vertex model family not yet supported: ${modelId}. Currently only claude-* publisher models are wired. Gemini models should use the 'google' provider type.`,
+      };
+    }
+
+    const accessToken = await getGcpAccessToken(apiKey);
+    const url =
+      `https://${region}-aiplatform.googleapis.com/v1/projects/${projectId}/locations/${region}/publishers/anthropic/models/${encodeURIComponent(modelId)}:rawPredict`;
+
+    const body = JSON.stringify({
+      anthropic_version: "vertex-2023-10-16",
+      max_tokens: maxTokens || modelProfile.default_max_tokens || 4096,
+      messages: fullMessages.filter((m) => m.role !== "system"),
+      system: systemPrompt || undefined,
+    });
+
+    const response = await fetch(url, {
+      method: "POST",
+      headers: {
+        Authorization: `Bearer ${accessToken}`,
+        "Content-Type": "application/json",
+      },
+      body,
+    });
+
+    if (!response.ok) {
+      const errorText = await response.text();
+      return { ok: false, status: response.status, errorText };
+    }
+
+    const raw = await response.json() as {
+      content?: Array<{ text?: string }>;
+      usage?: { input_tokens?: number; output_tokens?: number };
+      stop_reason?: string;
+    };
+
+    const text = (raw.content || []).map((c) => c.text || "").join("");
+    const normalized = {
+      id: `vertex-${Date.now()}`,
+      object: "chat.completion",
+      model: modelId,
+      choices: [
+        {
+          index: 0,
+          message: { role: "assistant", content: text },
+          finish_reason: raw.stop_reason || "stop",
+        },
+      ],
+      usage: {
+        prompt_tokens: raw.usage?.input_tokens ?? 0,
+        completion_tokens: raw.usage?.output_tokens ?? 0,
+        total_tokens: (raw.usage?.input_tokens ?? 0) + (raw.usage?.output_tokens ?? 0),
+      },
+    };
+
+    return { ok: true, status: 200, data: normalized };
+  } catch (error) {
+    return {
+      ok: false,
+      status: 500,
+      errorText: error instanceof Error ? error.message : "Vertex call failed",
+    };
+  }
+}
+
+/**
+ * Invoke an IBM watsonx.ai foundation model via the v1 text-generation API.
+ *
+ * Provider config convention:
+ *   base_url            = "{region_host}|{project_id}"
+ *                         (e.g. "https://us-south.ml.cloud.ibm.com|abc-123-def")
+ *   api_key_encrypted   = IBM Cloud API key
+ *   provider_model_name = watsonx model id
+ *                         (e.g. "ibm/granite-13b-chat-v2", "meta-llama/llama-3-70b-instruct")
+ *
+ * watsonx exposes a non-OpenAI generation API. We flatten chat messages into
+ * a single prompt (system + alternating user/assistant turns) and normalize
+ * the response to OpenAI chat.completions shape.
+ */
+async function callWatsonx(
+  provider: RouteWithProfile["model_profiles"]["providers_with_key"],
+  modelProfile: RouteWithProfile["model_profiles"],
+  fullMessages: Array<{ role: string; content: string }>,
+  systemPrompt: string | null,
+  maxTokens: number | null,
+  temperature: number | null,
+  apiKey: string,
+): Promise<{ ok: boolean; status: number; data?: unknown; errorText?: string; response?: Response }> {
+  try {
+    const baseUrl = provider.base_url || "";
+    const sep = baseUrl.indexOf("|");
+    if (sep === -1) {
+      return {
+        ok: false,
+        status: 500,
+        errorText:
+          'watsonx provider base_url must be formatted as "{region_host}|{project_id}", e.g. "https://us-south.ml.cloud.ibm.com|abc-123-def"',
+      };
+    }
+    const regionHost = baseUrl.slice(0, sep).replace(/\/$/, "");
+    const projectId = baseUrl.slice(sep + 1).trim();
+    if (!regionHost || !projectId) {
+      return { ok: false, status: 500, errorText: "watsonx base_url missing region or project_id" };
+    }
+
+    const iamToken = await getIbmIamToken(apiKey);
+    const url = `${regionHost}/ml/v1/text/generation?version=2024-05-31`;
+
+    // Flatten messages → prompt
+    const prefix = systemPrompt ? `System: ${systemPrompt}\n\n` : "";
+    const turns = fullMessages
+      .filter((m) => m.role !== "system")
+      .map((m) => `${m.role === "assistant" ? "Assistant" : "User"}: ${m.content}`)
+      .join("\n\n");
+    const prompt = `${prefix}${turns}\n\nAssistant:`;
+
+    const body = JSON.stringify({
+      model_id: modelProfile.provider_model_name,
+      project_id: projectId,
+      input: prompt,
+      parameters: {
+        decoding_method: "greedy",
+        max_new_tokens: maxTokens || modelProfile.default_max_tokens || 1024,
+        temperature: temperature ?? modelProfile.default_temperature ?? 0.7,
+      },
+    });
+
+    const response = await fetch(url, {
+      method: "POST",
+      headers: {
+        Authorization: `Bearer ${iamToken}`,
+        "Content-Type": "application/json",
+        Accept: "application/json",
+      },
+      body,
+    });
+
+    if (!response.ok) {
+      const errorText = await response.text();
+      return { ok: false, status: response.status, errorText };
+    }
+
+    const raw = await response.json() as {
+      results?: Array<{
+        generated_text?: string;
+        input_token_count?: number;
+        generated_token_count?: number;
+        stop_reason?: string;
+      }>;
+    };
+    const r = raw.results?.[0];
+    const text = r?.generated_text || "";
+    const inputTok = r?.input_token_count ?? 0;
+    const outputTok = r?.generated_token_count ?? 0;
+
+    const normalized = {
+      id: `watsonx-${Date.now()}`,
+      object: "chat.completion",
+      model: modelProfile.provider_model_name,
+      choices: [
+        {
+          index: 0,
+          message: { role: "assistant", content: text },
+          finish_reason: r?.stop_reason || "stop",
+        },
+      ],
+      usage: {
+        prompt_tokens: inputTok,
+        completion_tokens: outputTok,
+        total_tokens: inputTok + outputTok,
+      },
+    };
+
+    return { ok: true, status: 200, data: normalized };
+  } catch (error) {
+    return {
+      ok: false,
+      status: 500,
+      errorText: error instanceof Error ? error.message : "watsonx call failed",
+    };
+  }
+}
+
+/**
+ * Invoke an Oracle OCI Generative AI on-demand chat model.
+ *
+ * Provider config convention:
+ *   base_url            = "oci://{compartment_ocid}"
+ *                         (e.g. "oci://ocid1.compartment.oc1..aaa...")
+ *   api_key_encrypted   = "{tenancy_ocid}:{user_ocid}:{key_fingerprint}:{region}:{base64_pkcs8_private_key}"
+ *   provider_model_name = OCI on-demand model id
+ *                         (e.g. "cohere.command-r-plus-08-2024", "meta.llama-3.1-405b-instruct")
+ *
+ * Endpoint:
+ *   POST https://inference.generativeai.{region}.oci.oraclecloud.com/20231130/actions/chat
+ */
+async function callOci(
+  provider: RouteWithProfile["model_profiles"]["providers_with_key"],
+  modelProfile: RouteWithProfile["model_profiles"],
+  fullMessages: Array<{ role: string; content: string }>,
+  systemPrompt: string | null,
+  maxTokens: number | null,
+  temperature: number | null,
+  apiKey: string,
+): Promise<{ ok: boolean; status: number; data?: unknown; errorText?: string; response?: Response }> {
+  try {
+    const baseUrl = provider.base_url || "";
+    if (!baseUrl.startsWith("oci://")) {
+      return {
+        ok: false,
+        status: 500,
+        errorText:
+          'OCI provider base_url must be formatted as "oci://{compartment_ocid}", e.g. "oci://ocid1.compartment.oc1..aaa..."',
+      };
+    }
+    const compartmentId = baseUrl.replace("oci://", "").trim();
+    if (!compartmentId) {
+      return { ok: false, status: 500, errorText: "OCI compartment OCID missing in base_url" };
+    }
+
+    const creds = parseOciCredentials(apiKey);
+    const url = `https://inference.generativeai.${creds.region}.oci.oraclecloud.com/20231130/actions/chat`;
+
+    // OCI Generative AI generic chat request shape (works for cohere.* and meta.*)
+    const messages = systemPrompt
+      ? [{ role: "SYSTEM", content: [{ type: "TEXT", text: systemPrompt }] }, ...fullMessages.filter((m) => m.role !== "system").map((m) => ({
+          role: m.role === "assistant" ? "ASSISTANT" : "USER",
+          content: [{ type: "TEXT", text: m.content }],
+        }))]
+      : fullMessages.map((m) => ({
+          role: m.role === "assistant" ? "ASSISTANT" : (m.role === "system" ? "SYSTEM" : "USER"),
+          content: [{ type: "TEXT", text: m.content }],
+        }));
+
+    const body = JSON.stringify({
+      compartmentId,
+      servingMode: { servingType: "ON_DEMAND", modelId: modelProfile.provider_model_name },
+      chatRequest: {
+        apiFormat: "GENERIC",
+        messages,
+        maxTokens: maxTokens || modelProfile.default_max_tokens || 1024,
+        temperature: temperature ?? modelProfile.default_temperature ?? 0.7,
+      },
+    });
+
+    const headers = await signOciRequest({ creds, method: "POST", url, body });
+    const response = await fetch(url, { method: "POST", headers, body });
+
+    if (!response.ok) {
+      const errorText = await response.text();
+      return { ok: false, status: response.status, errorText };
+    }
+
+    const raw = await response.json() as {
+      chatResponse?: {
+        choices?: Array<{
+          message?: { content?: Array<{ text?: string }> };
+          finishReason?: string;
+        }>;
+        usage?: { promptTokens?: number; completionTokens?: number; totalTokens?: number };
+      };
+    };
+    const choice = raw.chatResponse?.choices?.[0];
+    const text = (choice?.message?.content || []).map((c) => c.text || "").join("");
+
+    const normalized = {
+      id: `oci-${Date.now()}`,
+      object: "chat.completion",
+      model: modelProfile.provider_model_name,
+      choices: [
+        {
+          index: 0,
+          message: { role: "assistant", content: text },
+          finish_reason: choice?.finishReason || "stop",
+        },
+      ],
+      usage: {
+        prompt_tokens: raw.chatResponse?.usage?.promptTokens ?? 0,
+        completion_tokens: raw.chatResponse?.usage?.completionTokens ?? 0,
+        total_tokens: raw.chatResponse?.usage?.totalTokens ?? 0,
+      },
+    };
+
+    return { ok: true, status: 200, data: normalized };
+  } catch (error) {
+    return {
+      ok: false,
+      status: 500,
+      errorText: error instanceof Error ? error.message : "OCI call failed",
+    };
+  }
+}
