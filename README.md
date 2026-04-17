@@ -40,6 +40,8 @@ StackSpine Gateway is a **task-level AI control plane** that sits between your a
 
 | Feature | Description |
 |---------|-------------|
+| **100+ providers** | Frontier labs, inference hosts, cloud vendors (Bedrock SigV4 / Vertex GCP JWT / watsonx IAM / OCI signing), self-hosted (vLLM, Ollama, TGI, LM Studio), and aggregators |
+| **Multi-modality** | Chat, embeddings, image generation, voice (TTS + STT), and grounded search — unified through one endpoint with per-modality unit metering |
 | **Multi-provider routing** | Primary, canary (weighted A/B), and fallback strategies |
 | **Circuit breaker** | 3-state (closed/open/half-open) per provider with configurable threshold |
 | **Budget enforcement** ⚡ | Pre-request blocking (HTTP 402) when spend exceeds limits *(Patent Pending)* |
