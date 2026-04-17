@@ -5,6 +5,9 @@
 
 import type { RouteWithProfile } from "./types.ts";
 import { parseAwsCredentials, signSigV4 } from "./sigv4.ts";
+import { getGcpAccessToken } from "./gcp-jwt.ts";
+import { getIbmIamToken } from "./ibm-iam.ts";
+import { parseOciCredentials, signOciRequest } from "./oci-sign.ts";
 
 /**
  * AI provider endpoint configurations.
@@ -12,13 +15,13 @@ import { parseAwsCredentials, signSigV4 } from "./sigv4.ts";
  * Most providers below speak the OpenAI chat/completions wire format with
  * Bearer-token auth. Exceptions handled with dedicated branches in
  * `callProvider()`:
- *   - `anthropic`   : x-api-key + Messages API
- *   - `google`      : x-goog-api-key (handled upstream)
- *   - `aws_bedrock` : SigV4 signing, Anthropic-on-Bedrock body shape
- *   - `azure_openai`: deployment-name URL + api-version query + api-key header
- *
- * Remaining custom-auth providers (Vertex AI service-account JWT, IBM watsonx IAM,
- * Oracle OCI signing) ship in a later phase.
+ *   - `anthropic`    : x-api-key + Messages API
+ *   - `google`       : x-goog-api-key (handled upstream)
+ *   - `aws_bedrock`  : SigV4 signing, Anthropic-on-Bedrock body shape
+ *   - `azure_openai` : deployment-name URL + api-version query + api-key header
+ *   - `google_vertex`: GCP service-account JWT exchange (Anthropic-on-Vertex body)
+ *   - `ibm_watsonx`  : IBM Cloud IAM token exchange (text/chat generation)
+ *   - `oracle_oci`   : OCI Signature v1 request signing (Generative AI inference)
  */
 export const providerEndpoints: Record<string, { url: string; authHeader: string }> = {
   // ── Native non-OpenAI-compatible (custom request/response handling) ────
@@ -27,6 +30,9 @@ export const providerEndpoints: Record<string, { url: string; authHeader: string
   google: { url: "https://generativelanguage.googleapis.com/v1beta/models", authHeader: "x-goog-api-key" },
   aws_bedrock: { url: "", authHeader: "Authorization" }, // base_url=bedrock://{region}
   azure_openai: { url: "", authHeader: "api-key" }, // base_url=full Azure deployment URL
+  google_vertex: { url: "", authHeader: "Authorization" }, // base_url=vertex://{project}/{region}; api_key=service-account JSON
+  ibm_watsonx: { url: "", authHeader: "Authorization" }, // base_url=https://{region}.ml.cloud.ibm.com|<project_id>; api_key=IBM Cloud API key
+  oracle_oci: { url: "", authHeader: "Authorization" }, // base_url=oci://{compartment_ocid}; api_key=tenancy:user:fingerprint:region:base64_pkcs8_key
 
   // ── Frontier labs (OpenAI-compatible) ──────────────────────────────────
   xai: { url: "https://api.x.ai/v1/chat/completions", authHeader: "Authorization" },
@@ -147,6 +153,44 @@ export async function callProvider(
       maxTokens,
       temperature,
       stream,
+      providerApiKey as string,
+    );
+  }
+
+  // ── Google Vertex AI: service-account JWT → OAuth token ──────────────
+  if (provider.type === "google_vertex") {
+    return await callVertex(
+      provider,
+      modelProfile,
+      fullMessages,
+      systemPrompt,
+      maxTokens,
+      providerApiKey as string,
+    );
+  }
+
+  // ── IBM watsonx.ai: IAM token exchange + ML text-generation API ──────
+  if (provider.type === "ibm_watsonx") {
+    return await callWatsonx(
+      provider,
+      modelProfile,
+      fullMessages,
+      systemPrompt,
+      maxTokens,
+      temperature,
+      providerApiKey as string,
+    );
+  }
+
+  // ── Oracle OCI Generative AI: OCI Signature v1 ────────────────────────
+  if (provider.type === "oracle_oci") {
+    return await callOci(
+      provider,
+      modelProfile,
+      fullMessages,
+      systemPrompt,
+      maxTokens,
+      temperature,
       providerApiKey as string,
     );
   }
