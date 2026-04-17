@@ -4,26 +4,29 @@
  */
 
 import type { RouteWithProfile } from "./types.ts";
+import { parseAwsCredentials, signSigV4 } from "./sigv4.ts";
 
 /**
  * AI provider endpoint configurations.
  *
- * All providers below speak the OpenAI chat/completions wire format with
- * Bearer-token auth, except `anthropic` (x-api-key + Messages API) and
- * `google` (x-goog-api-key, handled upstream). They flow through the generic
- * branch in `callProvider()` below, so adding a new OpenAI-compatible host
- * is purely a config addition here.
+ * Most providers below speak the OpenAI chat/completions wire format with
+ * Bearer-token auth. Exceptions handled with dedicated branches in
+ * `callProvider()`:
+ *   - `anthropic`   : x-api-key + Messages API
+ *   - `google`      : x-goog-api-key (handled upstream)
+ *   - `aws_bedrock` : SigV4 signing, Anthropic-on-Bedrock body shape
+ *   - `azure_openai`: deployment-name URL + api-version query + api-key header
  *
- * Custom-auth providers (AWS Bedrock SigV4, Azure OpenAI api-version routing,
- * Google Vertex AI service-account JWT, IBM watsonx IAM, Oracle OCI signing)
- * are intentionally NOT in this map — they need dedicated handlers and ship
- * in a later phase.
+ * Remaining custom-auth providers (Vertex AI service-account JWT, IBM watsonx IAM,
+ * Oracle OCI signing) ship in a later phase.
  */
 export const providerEndpoints: Record<string, { url: string; authHeader: string }> = {
   // ── Native non-OpenAI-compatible (custom request/response handling) ────
   openai: { url: "https://api.openai.com/v1/chat/completions", authHeader: "Authorization" },
   anthropic: { url: "https://api.anthropic.com/v1/messages", authHeader: "x-api-key" },
   google: { url: "https://generativelanguage.googleapis.com/v1beta/models", authHeader: "x-goog-api-key" },
+  aws_bedrock: { url: "", authHeader: "Authorization" }, // base_url=bedrock://{region}
+  azure_openai: { url: "", authHeader: "api-key" }, // base_url=full Azure deployment URL
 
   // ── Frontier labs (OpenAI-compatible) ──────────────────────────────────
   xai: { url: "https://api.x.ai/v1/chat/completions", authHeader: "Authorization" },
@@ -123,6 +126,31 @@ export async function callProvider(
     return { ok: false, status: 500, errorText: "Provider API key not configured" };
   }
 
+  // ── AWS Bedrock: SigV4 signing, Anthropic-on-Bedrock body shape ──────
+  if (provider.type === "aws_bedrock") {
+    return await callBedrock(
+      provider,
+      modelProfile,
+      fullMessages,
+      systemPrompt,
+      maxTokens,
+      providerApiKey as string,
+    );
+  }
+
+  // ── Azure OpenAI: deployment URL + api-key header (no Bearer) ────────
+  if (provider.type === "azure_openai") {
+    return await callAzure(
+      baseUrl,
+      modelProfile,
+      fullMessages,
+      maxTokens,
+      temperature,
+      stream,
+      providerApiKey as string,
+    );
+  }
+
   let requestBody: Record<string, unknown>;
   let headers: Record<string, string>;
 
@@ -170,5 +198,186 @@ export async function callProvider(
     return { ok: true, status: 200, data };
   } catch (error) {
     return { ok: false, status: 500, errorText: error instanceof Error ? error.message : "Network error" };
+  }
+}
+
+/**
+ * Invoke an AWS Bedrock foundation model via SigV4-signed POST to
+ * bedrock-runtime.{region}.amazonaws.com/model/{modelId}/invoke.
+ *
+ * Provider config convention:
+ *   base_url           = "bedrock://{region}"  (e.g. "bedrock://us-east-1")
+ *   api_key_encrypted  = "ACCESS_KEY_ID:SECRET_ACCESS_KEY[:SESSION_TOKEN]"
+ *   provider_model_name = full Bedrock model id (e.g. "anthropic.claude-3-5-sonnet-20241022-v2:0")
+ *
+ * Currently emits the Anthropic-on-Bedrock body shape (works for all
+ * `anthropic.*` model ids — the dominant Bedrock use case). Other model
+ * families (Cohere, Meta Llama, AI21) will need their own branches; until
+ * then they'll get a clear error rather than a silently-wrong call.
+ *
+ * Streaming is not yet wired for Bedrock — falls back to non-streaming.
+ */
+async function callBedrock(
+  provider: RouteWithProfile["model_profiles"]["providers_with_key"],
+  modelProfile: RouteWithProfile["model_profiles"],
+  fullMessages: Array<{ role: string; content: string }>,
+  systemPrompt: string | null,
+  maxTokens: number | null,
+  apiKey: string,
+): Promise<{ ok: boolean; status: number; data?: unknown; errorText?: string; response?: Response }> {
+  try {
+    const baseUrl = provider.base_url || "";
+    if (!baseUrl.startsWith("bedrock://")) {
+      return {
+        ok: false,
+        status: 500,
+        errorText:
+          'Bedrock provider base_url must be formatted as "bedrock://{region}", e.g. "bedrock://us-east-1"',
+      };
+    }
+    const region = baseUrl.replace("bedrock://", "").trim();
+    if (!region) {
+      return { ok: false, status: 500, errorText: "Bedrock region missing in base_url" };
+    }
+
+    const modelId = modelProfile.provider_model_name;
+    const isAnthropic = modelId.startsWith("anthropic.");
+    if (!isAnthropic) {
+      return {
+        ok: false,
+        status: 501,
+        errorText: `Bedrock model family not yet supported: ${modelId}. Currently only anthropic.* models are wired.`,
+      };
+    }
+
+    const creds = parseAwsCredentials(apiKey);
+    const url = `https://bedrock-runtime.${region}.amazonaws.com/model/${encodeURIComponent(modelId)}/invoke`;
+
+    const body = JSON.stringify({
+      anthropic_version: "bedrock-2023-05-31",
+      max_tokens: maxTokens || modelProfile.default_max_tokens || 4096,
+      messages: fullMessages.filter((m) => m.role !== "system"),
+      system: systemPrompt || undefined,
+    });
+
+    const signedHeaders = await signSigV4({
+      accessKeyId: creds.accessKeyId,
+      secretAccessKey: creds.secretAccessKey,
+      sessionToken: creds.sessionToken,
+      region,
+      service: "bedrock",
+      method: "POST",
+      url,
+      body,
+      headers: { "content-type": "application/json", accept: "application/json" },
+    });
+
+    const response = await fetch(url, { method: "POST", headers: signedHeaders, body });
+    if (!response.ok) {
+      const errorText = await response.text();
+      return { ok: false, status: response.status, errorText };
+    }
+
+    const raw = await response.json() as {
+      content?: Array<{ text?: string }>;
+      usage?: { input_tokens?: number; output_tokens?: number };
+      stop_reason?: string;
+    };
+
+    // Normalize Anthropic-on-Bedrock response to OpenAI chat.completions shape
+    // so downstream parsing in invoke/index.ts continues to work uniformly.
+    const text = (raw.content || []).map((c) => c.text || "").join("");
+    const normalized = {
+      id: `bedrock-${Date.now()}`,
+      object: "chat.completion",
+      model: modelId,
+      choices: [
+        {
+          index: 0,
+          message: { role: "assistant", content: text },
+          finish_reason: raw.stop_reason || "stop",
+        },
+      ],
+      usage: {
+        prompt_tokens: raw.usage?.input_tokens ?? 0,
+        completion_tokens: raw.usage?.output_tokens ?? 0,
+        total_tokens: (raw.usage?.input_tokens ?? 0) + (raw.usage?.output_tokens ?? 0),
+      },
+    };
+
+    return { ok: true, status: 200, data: normalized };
+  } catch (error) {
+    return {
+      ok: false,
+      status: 500,
+      errorText: error instanceof Error ? error.message : "Bedrock call failed",
+    };
+  }
+}
+
+/**
+ * Invoke an Azure OpenAI deployment.
+ *
+ * Provider config convention:
+ *   base_url = full deployment URL with api-version, e.g.
+ *     "https://my-resource.openai.azure.com/openai/deployments/my-gpt4o/chat/completions?api-version=2024-10-21"
+ *   api_key_encrypted = the Azure resource key
+ *   provider_model_name = ignored by Azure (deployment name lives in URL); we
+ *                         still pass it as `model` for log fidelity.
+ *
+ * Body shape and response shape are OpenAI-compatible, so no normalization
+ * is needed beyond auth-header swap.
+ */
+async function callAzure(
+  baseUrl: string,
+  modelProfile: RouteWithProfile["model_profiles"],
+  fullMessages: Array<{ role: string; content: string }>,
+  maxTokens: number | null,
+  temperature: number | null,
+  stream: boolean,
+  apiKey: string,
+): Promise<{ ok: boolean; status: number; data?: unknown; errorText?: string; response?: Response }> {
+  try {
+    if (!baseUrl || !baseUrl.includes("api-version=")) {
+      return {
+        ok: false,
+        status: 500,
+        errorText:
+          'Azure provider base_url must be the full deployment URL including ?api-version=YYYY-MM-DD, e.g. "https://{resource}.openai.azure.com/openai/deployments/{deployment}/chat/completions?api-version=2024-10-21"',
+      };
+    }
+
+    const requestBody: Record<string, unknown> = {
+      model: modelProfile.provider_model_name,
+      messages: fullMessages,
+      max_tokens: maxTokens || modelProfile.default_max_tokens || 4096,
+      temperature: temperature ?? modelProfile.default_temperature ?? 0.7,
+      stream,
+    };
+
+    const response = await fetch(baseUrl, {
+      method: "POST",
+      headers: {
+        "api-key": apiKey,
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify(requestBody),
+    });
+
+    if (!response.ok) {
+      const errorText = await response.text();
+      return { ok: false, status: response.status, errorText };
+    }
+
+    if (stream) return { ok: true, status: 200, response };
+
+    const data = await response.json();
+    return { ok: true, status: 200, data };
+  } catch (error) {
+    return {
+      ok: false,
+      status: 500,
+      errorText: error instanceof Error ? error.message : "Azure call failed",
+    };
   }
 }
