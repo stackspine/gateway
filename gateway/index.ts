@@ -720,9 +720,10 @@ serve(async (req) => {
 
     // Apply routing suffix preference
     if (routingSuffix === "cost") {
+      // Phase 5 — modality-aware cheapest-route ordering.
       sortedRoutes = sortedRoutes.sort((a, b) => {
-        const costA = (a.model_profiles?.cost_per_input_token || 0) + (a.model_profiles?.cost_per_output_token || 0);
-        const costB = (b.model_profiles?.cost_per_input_token || 0) + (b.model_profiles?.cost_per_output_token || 0);
+        const costA = projectCallCost(a.model_profiles, 1000, 500, a.model_profiles?.providers_with_key?.type);
+        const costB = projectCallCost(b.model_profiles, 1000, 500, b.model_profiles?.providers_with_key?.type);
         return costA - costB;
       });
     } else if (routingSuffix === "speed") {
@@ -984,9 +985,10 @@ serve(async (req) => {
         },
         async flush() {
           const totalTokens = inputTokens + outputTokens;
-          const inputCost = inputTokens * (modelProfile.cost_per_input_token || 0);
-          const outputCost = outputTokens * (modelProfile.cost_per_output_token || 0);
-          const totalCost = inputCost + outputCost;
+          const totalCost = computeCost(modelProfile, {
+            input_tokens: inputTokens,
+            output_tokens: outputTokens,
+          }, provider.type);
           const finalLatency = Date.now() - startTime;
 
           await supabase.from("call_logs").insert({
@@ -1024,9 +1026,11 @@ serve(async (req) => {
     }
 
     const totalTokens = inputTokens + outputTokens;
-    const inputCost = inputTokens * (modelProfile.cost_per_input_token || 0);
-    const outputCost = outputTokens * (modelProfile.cost_per_output_token || 0);
-    const totalCost = inputCost + outputCost;
+    // Phase 5 — centralized per-modality cost math (chat is identical to legacy).
+    const totalCost = computeCost(modelProfile, {
+      input_tokens: inputTokens,
+      output_tokens: outputTokens,
+    }, provider.type);
 
     let content: string;
     if (provider.type === "anthropic") {
