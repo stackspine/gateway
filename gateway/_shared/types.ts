@@ -49,6 +49,14 @@ export interface RouteWithProfile {
     default_temperature: number | null;
     cost_per_input_token: number | null;
     cost_per_output_token: number | null;
+    /** Phase 5 — per-modality unit prices (nullable; defaults to 0 when missing). */
+    cost_per_image?: number | null;
+    cost_per_second?: number | null;
+    cost_per_char?: number | null;
+    cost_per_search?: number | null;
+    cost_per_embedding_token?: number | null;
+    /** Phase 5 — explicit modality discriminator. Falls back to PROVIDER_MODALITY map. */
+    modality?: string | null;
     context_window_tokens: number | null;
     providers_with_key: ProviderData;
   };
