@@ -5,6 +5,7 @@
 
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
 import type { RouteWithProfile } from "./types.ts";
+import { projectCallCost, resolveModality } from "./cost-calculator.ts";
 
 export interface CostOptimizationResult {
   optimizedRoute: RouteWithProfile;
@@ -129,32 +130,29 @@ export async function optimizeForCost(
     const stats = statsMap.get(mp.id);
     const calls = stats?.totalCalls || 0;
     const avgTokensPerCall = calls > 0 ? stats!.totalTokens / calls : 0;
+    const providerType = mp.providers_with_key?.type;
+    const modality = resolveModality(mp, providerType);
 
-    // Predict output tokens: use historical avg output/input ratio, capped at 2x
+    // Predict output tokens: use historical avg output/input ratio, capped at 2x.
+    // Only meaningful for chat / embedding modalities.
     let predictedOutputTokens: number;
-    if (calls >= 10 && avgTokensPerCall > 0) {
-      // Estimate output ratio from total (total ≈ input + output, so output ≈ total - input)
-      // Use a simpler heuristic: assume output is roughly proportional to input based on history
-      const avgCostPerToken = stats!.totalCost / stats!.totalTokens;
+    if ((modality === "chat" || modality === "embedding") && calls >= 10 && avgTokensPerCall > 0) {
       const blendedRate = (Number(mp.cost_per_input_token) || 0) + (Number(mp.cost_per_output_token) || 0);
       const outputRatio = blendedRate > 0 ? (Number(mp.cost_per_output_token) || 0) / blendedRate : 0.5;
       predictedOutputTokens = Math.min(
         Math.round(estimatedInputTokens * (outputRatio > 0 ? outputRatio / (1 - outputRatio) : 1)),
-        estimatedInputTokens * 2, // Cap at 2x input
+        estimatedInputTokens * 2,
         mp.default_max_tokens || 4096
       );
     } else {
       predictedOutputTokens = Math.min(mp.default_max_tokens || 4096, estimatedInputTokens);
     }
 
-    const predictedCost =
-      estimatedInputTokens * (Number(mp.cost_per_input_token) || 0) +
-      predictedOutputTokens * (Number(mp.cost_per_output_token) || 0);
+    // Phase 5 — modality-aware predicted USD.
+    const predictedCost = projectCallCost(mp, estimatedInputTokens, predictedOutputTokens, providerType);
 
     const sr = successRates.get(mp.id) ?? 0;
-
-    // Confidence based on data volume
-    const confidence = Math.min(calls / 200, 1); // 0→1 as calls go 0→200
+    const confidence = Math.min(calls / 200, 1);
 
     projections.push({
       route,

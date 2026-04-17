@@ -20,6 +20,7 @@ import { selectRoute, getCircuitState, isCircuitOpen } from "./_shared/routing.t
 import { callProvider } from "./_shared/providers.ts";
 import { portContext } from "./_shared/context-porter.ts";
 import { optimizeForCost, recordCostPrediction, type CostOptimizationResult } from "./_shared/cost-optimizer.ts";
+import { computeCost, projectCallCost } from "./_shared/cost-calculator.ts";
 import { scanForTopics, scanForCompetitors, scanForProfanity, redactGuardrailMatches, type GuardrailScanResult } from "./_shared/guardrails.ts";
 
 // ============================================================================
