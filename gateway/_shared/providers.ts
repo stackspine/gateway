@@ -8,6 +8,14 @@ import { parseAwsCredentials, signSigV4 } from "./sigv4.ts";
 import { getGcpAccessToken } from "./gcp-jwt.ts";
 import { getIbmIamToken } from "./ibm-iam.ts";
 import { parseOciCredentials, signOciRequest } from "./oci-sign.ts";
+import {
+  PROVIDER_MODALITY,
+  callEmbedding,
+  callImage,
+  callVoiceTTS,
+  callVoiceSTT,
+  callSearch,
+} from "./modalities.ts";
 
 /**
  * AI provider endpoint configurations.
@@ -130,6 +138,29 @@ export async function callProvider(
 
   if (!providerApiKey) {
     return { ok: false, status: 500, errorText: "Provider API key not configured" };
+  }
+
+  // ── Phase 4: Non-chat modality dispatch ───────────────────────────────
+  // Embedding / image / voice / search providers route through dedicated
+  // handlers that normalize each modality back into a chat-shaped envelope
+  // (so logging, billing, callbacks, and SDKs keep working unchanged).
+  const modality = PROVIDER_MODALITY[provider.type];
+  if (modality) {
+    if (modality === "embedding") {
+      return await callEmbedding(provider, modelProfile, fullMessages, providerApiKey as string);
+    }
+    if (modality === "image") {
+      return await callImage(provider, modelProfile, fullMessages, providerApiKey as string);
+    }
+    if (modality === "voice_tts") {
+      return await callVoiceTTS(provider, modelProfile, fullMessages, providerApiKey as string);
+    }
+    if (modality === "voice_stt") {
+      return await callVoiceSTT(provider, modelProfile, fullMessages, providerApiKey as string);
+    }
+    if (modality === "search") {
+      return await callSearch(provider, modelProfile, fullMessages, providerApiKey as string);
+    }
   }
 
   // ── AWS Bedrock: SigV4 signing, Anthropic-on-Bedrock body shape ──────
