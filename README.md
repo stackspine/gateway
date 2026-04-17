@@ -20,17 +20,21 @@
 StackSpine Gateway is a **task-level AI control plane** that sits between your application and AI providers. Instead of calling OpenAI/Anthropic/Google directly, you define **tasks** (like `summarize-ticket` or `chat-support`) and StackSpine routes each request to the optimal model based on cost, latency, compliance rules, and provider health.
 
 ```
-┌─────────────────┐     ┌──────────────────────────┐     ┌──────────────┐
-│   Your App      │────▶│  StackSpine Gateway      │────▶│  OpenAI      │
-│                 │     │                          │────▶│  Anthropic   │
-│  POST /v1/tasks │     │  • Route selection       │────▶│  Google      │
-│  /chat/run      │     │  • Budget enforcement    │────▶│  Mistral     │
-│                 │     │  • Compliance scanning   │────▶│  Groq        │
-│                 │     │  • Circuit breakers      │────▶│  Any OpenAI- │
-└─────────────────┘     │  • Cost optimization     │     │  compatible  │
-                        └──────────────────────────┘     └──────────────┘
-                                     │
-                              ┌──────▼───────┐
+┌─────────────────┐     ┌──────────────────────────┐     ┌────────────────────┐
+│   Your App      │────▶│  StackSpine Gateway      │────▶│  100+ providers    │
+│                 │     │                          │     │  • OpenAI / Azure  │
+│  POST /v1/tasks │     │  • Route selection       │     │  • Anthropic       │
+│  /chat/run      │     │  • Budget enforcement    │     │  • Google / Vertex │
+│                 │     │  • Compliance scanning   │     │  • AWS Bedrock     │
+│                 │     │  • Circuit breakers      │     │  • Groq / Cerebras │
+│                 │     │  • Cost optimization     │     │  • Together / Fire │
+└─────────────────┘     │  • Multi-modality        │     │  • Ollama / vLLM   │
+                        │    (chat · embeddings ·  │     │  • Voyage / Jina   │
+                        │     image · voice ·      │     │  • ElevenLabs      │
+                        │     search)              │     │  • Stability / Fal │
+                        └──────────────────────────┘     │  • Tavily / Exa    │
+                                     │                   │  • + 90 more…      │
+                              ┌──────▼───────┐           └────────────────────┘
                               │  PostgreSQL  │
                               │  (Supabase)  │
                               └──────────────┘
@@ -196,7 +200,7 @@ The gateway is a single Deno edge function that:
 3. **Enforces budgets** — Queries `daily_call_stats` aggregation table (~31 rows/month) to project cost *(Patent Pending)*
 4. **Scans compliance** — PII detection, topic blocking, profanity filtering
 5. **Selects route** — Conditional → canary (weighted) → primary → fallback
-6. **Calls provider** — OpenAI, Anthropic, Google, Mistral, Groq, or any OpenAI-compatible endpoint
+6. **Calls provider** — Any of 100+ providers across 7 modalities: frontier labs, inference hosts, cloud (Bedrock SigV4, Vertex GCP JWT, watsonx IAM, OCI signing), self-hosted, embeddings, image, voice, and grounded search
 7. **Logs & aggregates** — Insert to `call_logs`, triggers auto-update `daily_*_stats`
 
 All pre-flight checks are consolidated into a single `resolve_invoke_context` RPC (one database round-trip, ~10-30ms).
