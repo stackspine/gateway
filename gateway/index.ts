@@ -42,6 +42,7 @@ import { scanForTopics, scanForCompetitors, scanForProfanity, redactGuardrailMat
 // Utilities
 // ============================================================================
 
+// [Patent 1, Claim 1(b)] — SHA-256 hash of provided API key for tenant lookup.
 async function hashApiKey(key: string): Promise<string> {
   const encoder = new TextEncoder();
   const data = encoder.encode(key);
@@ -50,6 +51,7 @@ async function hashApiKey(key: string): Promise<string> {
   return hashArray.map(b => b.toString(16).padStart(2, "0")).join("");
 }
 
+// [Patent 1, Claim 1(b)] — Timing-safe comparison against stored hash value.
 function secureCompare(a: string, b: string): boolean {
   if (a.length !== b.length) return false;
   const encoder = new TextEncoder();
@@ -60,7 +62,7 @@ const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
   "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type, x-api-key, x-api-version, x-region",
   "X-API-Version": "1",
-  
+  "X-Patent-Status": "Patent Pending — Pre-Request Budget Enforcement; Compliance-Driven Route Filtering",
 };
 
 // ============================================================================
