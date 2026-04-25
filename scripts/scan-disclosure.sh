@@ -67,8 +67,8 @@ run_check () {
   local output
   if output=$(rg -n --color=never --hidden \
                  -g '!**/node_modules/**' -g '!**/dist/**' -g '!**/target/**' \
-                 -g '!scripts/scan-disclosure.sh' \
-                 -g '!.github/workflows/scan-disclosure.yml' \
+                 -g '!**/scan-disclosure.sh' \
+                 -g '!**/scan-disclosure.yml' \
                  "${extra_args[@]}" \
                  -e "${pattern}" "${ROOT}"); then
     echo "${output}"
