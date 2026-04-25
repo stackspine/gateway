@@ -5,11 +5,12 @@
  * PATENT NOTICE — Patent 1 (Pending):
  *   Claim 2: Modality-aware predicted-cost projection — implemented via
  *     `projectCallCost()` from ./cost-calculator.ts (called per-route below).
- *   Claim 3: Gating thresholds for auto-routing — the composition of
- *     (≥50 historical calls per model) + (≥2 qualified models) +
- *     (≥95% task-scoped success rate) + (≥0.25 confidence) +
- *     (≥20% savings vs current route) is the patentable composition.
- *     Each individual gate is well-known; the ordered composition is not.
+ *   Claim 3: Gating thresholds for auto-routing. The specific composition of
+ *     historical-call, qualified-model, success-rate, confidence, and
+ *     savings gates that govern route override is the subject of pending
+ *     claims; the parameter values are intentionally not enumerated in
+ *     comments. See the source code below and the USPTO filings of record
+ *     for the authoritative description.
  *   Claim 4: Pre-request optimization runs BEFORE the request is dispatched
  *     to a downstream provider — distinguishing this from post-hoc
  *     analytics-driven model swap recommendations.
@@ -38,15 +39,14 @@ interface ModelStats {
 }
 
 /**
- * Attempts to optimize route selection for cost. Only overrides when:
- * - Task has auto_optimize_routing enabled
- * - 50+ historical calls exist for 2+ models
- * - Cheapest model has ≥95% success rate
- * - Savings exceed 20% vs current route
+ * Attempts to optimize route selection for cost. Override only fires when a
+ * composition of historical-volume, qualified-model-count, success-rate,
+ * confidence, and savings thresholds are simultaneously satisfied; see the
+ * implementation below for the operative values.
  *
- * [Patent 1, Claim 3] — The five gating thresholds below (50-call minimum,
- *   ≥2 qualified models, 95% success rate, 0.25 confidence, 20% savings)
- *   compose the auto-optimization decision rule.
+ * [Patent 1, Claim 3] — The composition of gating thresholds below is the
+ *   subject of a pending claim; specific parameter values are not reproduced
+ *   in this comment.
  * [Patent 1, Claim 4] — All evaluation occurs pre-request; no payload
  *   leaves the gateway during this function.
  */
