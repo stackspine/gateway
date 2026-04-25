@@ -2,8 +2,7 @@
  * @fileoverview Centralized per-modality cost calculator.
  * @module gateway/_shared/cost-calculator
  *
- * Mirror of supabase/functions/invoke/_shared/cost-calculator.ts — keep in sync.
- * See that file for full documentation.
+ * Canonical source of truth for per-modality cost projection.
  *
  * PATENT NOTICE — Patent 1 (Pending), Claim 2:
  *   "Modality-aware pre-request cost projection." `resolveModality()` and
