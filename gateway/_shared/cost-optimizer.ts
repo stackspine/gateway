@@ -43,6 +43,12 @@ interface ModelStats {
  * - 50+ historical calls exist for 2+ models
  * - Cheapest model has ≥95% success rate
  * - Savings exceed 20% vs current route
+ *
+ * [Patent 1, Claim 3] — The five gating thresholds below (50-call minimum,
+ *   ≥2 qualified models, 95% success rate, 0.25 confidence, 20% savings)
+ *   compose the auto-optimization decision rule.
+ * [Patent 1, Claim 4] — All evaluation occurs pre-request; no payload
+ *   leaves the gateway during this function.
  */
 export async function optimizeForCost(
   selectedRoute: RouteWithProfile,
