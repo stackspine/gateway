@@ -33,6 +33,47 @@ The Apache 2.0 patent grant (Section 3) applies to Contributions to this
 repository. The pending patent rights described above are separate from
 the Apache 2.0 grant and are not granted to non-contributors.
 
+CLAIM-TO-FILE MAPPING (for continuation filings)
+
+Patent 1 — Pre-Request Budget Enforcement:
+  Claim 1 (single round-trip pre-flight)
+    - gateway/index.ts                    Step 3 (resolve_invoke_context)
+    - gateway/index.ts                    Step 5 (budget rule loop)
+    - migrations/000_core_schema.sql      resolve_invoke_context()
+  Claim 2 (modality-aware cost projection)
+    - gateway/_shared/cost-calculator.ts  resolveModality, projectCallCost
+    - gateway/_shared/modalities.ts       PROVIDER_MODALITY + envelope
+  Claim 3 (gating thresholds for auto-routing)
+    - gateway/_shared/cost-optimizer.ts   optimizeForCost (50 / 2 / 0.95 /
+                                          0.25 / 0.20 composition)
+  Claim 4 (pre-request, no-payload optimization)
+    - gateway/_shared/cost-optimizer.ts   optimizeForCost
+    - gateway/index.ts                    Step 6 (pre-dispatch)
+  Claim 5 (single round-trip latency reduction)
+    - migrations/000_core_schema.sql      resolve_invoke_context() RPC
+  Claim 6 (daily_call_stats materialized aggregation)
+    - migrations/000_core_schema.sql      daily_call_stats + triggers
+  Claim 7 (usage enforcement w/ grace period)
+    - gateway/index.ts                    Step 5a
+  Claim 8 (structured budget-blocked error)
+    - gateway/index.ts                    Step 5 error response
+
+Patent 2 — Compliance-Driven Route Filtering:
+  Claim 1 (deny-by-default data-policy filter)
+    - gateway/_shared/routing.ts          selectRoute — policy filter block
+  Claim 4 (route-policy association)
+    - gateway/_shared/routing.ts          route_data_policies join
+  Claim 5 (empty-set compliance error path)
+    - gateway/_shared/routing.ts          throw on empty candidate set
+  Claim 6 (conditional route evaluation)
+    - gateway/_shared/routing.ts          route_conditions evaluation
+  Claim 7 (prioritized strategy selection)
+    - gateway/_shared/routing.ts          canary → primary → fallback ordering
+
+The corresponding production-tree files under
+supabase/functions/invoke/_shared/ are kept in sync and carry identical
+[Patent N, Claim M] markers.
+
 ---
 
 Third-Party Notices
