@@ -309,6 +309,12 @@ serve(async (req) => {
 
     // ========================================================================
     // Step 3: Consolidated Pre-flight RPC (single DB round-trip)
+    // [Patent 1, Claim 1(c)(d)] — Single round-trip retrieval of budget rules,
+    //   spend aggregations, rate limits, idempotency cache, and compliance rules.
+    // [Patent 1, Claim 5] — Reduces database latency to a single round-trip
+    //   for all pre-request validation.
+    // [Patent 1, Claim 2(b)] — resolve_invoke_context stored procedure performs
+    //   the task-scoped projection of monthly spend by scope_id.
     // ========================================================================
 
     // deno-lint-ignore no-explicit-any
