@@ -1,0 +1,31 @@
+name: Disclosure Scan
+
+# Scans the open-source gateway tree for accidentally-committed secrets,
+# internal infrastructure paths, and patent / IP over-disclosure.
+#
+# Runs on every push and PR to main, plus before any release tag is published.
+# The release workflow also gates on this job — see release.yml.
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+  workflow_call: {}   # let release.yml reuse this job as a hard gate
+
+permissions:
+  contents: read
+
+jobs:
+  scan:
+    name: Scan for secrets / internal paths / IP over-disclosure
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Install ripgrep
+        run: sudo apt-get update && sudo apt-get install -y ripgrep
+
+      - name: Run disclosure scanner
+        run: bash scripts/scan-disclosure.sh
+        working-directory: gateway-oss

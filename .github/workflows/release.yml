@@ -9,7 +9,13 @@ permissions:
   packages: write
 
 jobs:
+  disclosure-scan:
+    name: Pre-release disclosure scan
+    uses: ./.github/workflows/scan-disclosure.yml
+
   publish-npm:
+    name: Publish — npm
+    needs: disclosure-scan
     name: Publish — npm
     runs-on: ubuntu-latest
     defaults:
@@ -31,6 +37,7 @@ jobs:
 
   publish-pypi:
     name: Publish — PyPI
+    needs: disclosure-scan
     runs-on: ubuntu-latest
     defaults:
       run:
@@ -57,6 +64,7 @@ jobs:
 
   publish-crates:
     name: Publish — crates.io
+    needs: disclosure-scan
     runs-on: ubuntu-latest
     defaults:
       run:
@@ -76,6 +84,7 @@ jobs:
 
   publish-rubygems:
     name: Publish — RubyGems
+    needs: disclosure-scan
     runs-on: ubuntu-latest
     defaults:
       run:
@@ -99,6 +108,7 @@ jobs:
 
   publish-docker:
     name: Publish — Docker (GHCR)
+    needs: disclosure-scan
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4

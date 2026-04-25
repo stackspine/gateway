@@ -7,9 +7,9 @@
  *   Route Filtering in a Multi-Model AI Control Plane." The deny-by-default
  *   data-policy filter, empty-set compliance error path, conditional
  *   evaluation, and prioritized strategy selection are all annotated below
- *   with [Patent 2, Claim N] references. Keep this file as the single
- *   source of truth for compliance-driven routing — see gateway-oss/NOTICE
- *   for the full claim-to-file mapping.
+ *   with [Patent 2, Claim N] references. See gateway-oss/NOTICE for the
+ *   patent notice; the operative claim language is set forth in the USPTO
+ *   filings of record.
  */
 
 import type { RouteWithProfile, RouteConditionRow, RouteContext } from "./types.ts";
