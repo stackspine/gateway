@@ -427,21 +427,39 @@ serve(async (req) => {
 
     // ========================================================================
     // Step 5: Budget Enforcement
+    // [Patent 1, Claim 1(e)(f)(g)] — Pre-request budget rule evaluation,
+    //   executed BEFORE any payload is transmitted to a downstream provider.
+    // [Patent 1, Claim 2(c)] — Iterates over budget rules, compares projected
+    //   spend against ceiling, blocks with HTTP 402 before tokens are consumed.
+    // [Patent 1, Claim 3] — Task-specific spend resolved via scope_id lookup
+    //   (task-scoped projection — distinct from org-wide aggregate enforcement).
+    // [Patent 1, Claim 6] — Monthly spend derived from daily_call_stats
+    //   materialized view (at most 31 rows) instead of scanning call logs.
+    // [Patent 1, Claim 8] — Error metadata includes budget_blocked flag and
+    //   blocked_by string distinguishing org-level vs task-level blocks.
+    // [Patent 1, Claim 2(d)] — Structured error schema with error string,
+    //   error code enumeration, and details object.
     // ========================================================================
 
     const budgetRules = ctx.budget_rules || [];
     const orgSpend = Number(ctx.monthly_spend) || 0;
+    // [Patent 1, Claim 1(d)] — Pre-computed daily spend aggregations.
     const taskSpends: Record<string, number> = ctx.task_spends || {};
 
     for (const rule of budgetRules) {
+      // [Patent 1, Claim 1(e)] — Compare aggregated spend against ceiling
+      //   for the corresponding scope (organization-wide OR task-specific).
       const spend = rule.scope_type === "org" 
         ? orgSpend 
         : (rule.scope_id ? Number(taskSpends[rule.scope_id]) || 0 : 0);
       
+      // [Patent 1, Claim 1(f)] — Block before forwarding to any downstream provider.
       if (spend >= rule.monthly_budget_usd) {
         const blockedBy = rule.scope_type === "org" ? "Organization budget" : "Task budget";
         console.warn(`Budget exceeded for org ${orgId}: $${spend.toFixed(4)} / $${rule.monthly_budget_usd.toFixed(2)}`);
         
+        // [Patent 1, Claim 1(f)] — Insert error record with zero token consumption
+        //   and metadata flag indicating budget-blocked status.
         await supabase.from("call_logs").insert({
           org_id: orgId, task_id: taskId, status: "error",
           error_message: `Budget limit exceeded: $${spend.toFixed(4)} / $${rule.monthly_budget_usd.toFixed(2)}`,
@@ -450,12 +468,15 @@ serve(async (req) => {
           trace_id: traceId, session_id: session_id || null, parent_trace_id: parent_trace_id || null,
         });
         
+        // [Patent 1, Claim 1(f)] — HTTP 402 with BUDGET_EXCEEDED code, spend/limit details.
         return new Response(
           JSON.stringify({ error: "Budget limit exceeded", code: "BUDGET_EXCEEDED", details: { blocked_by: blockedBy, current_spend_usd: spend, monthly_limit_usd: rule.monthly_budget_usd, message: `Monthly spending ($${spend.toFixed(4)}) has reached the budget limit ($${rule.monthly_budget_usd.toFixed(2)}).` } }),
           { status: 402, headers: { ...responseHeaders, "Content-Type": "application/json" } }
         );
       }
     }
+
+    // [Patent 1, Claim 1(g)] — No budget rule violated; proceed to routing.
 
     // ========================================================================
     // Step 5a: Usage Enforcement
