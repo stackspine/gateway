@@ -1,6 +1,18 @@
 /**
  * @fileoverview Real-time cost optimization engine
- * Predicts token usage and selects the cheapest qualifying model when confidence is high enough
+ * Predicts token usage and selects the cheapest qualifying model when confidence is high enough.
+ *
+ * PATENT NOTICE — Patent 1 (Pending):
+ *   Claim 2: Modality-aware predicted-cost projection — implemented via
+ *     `projectCallCost()` from ./cost-calculator.ts (called per-route below).
+ *   Claim 3: Gating thresholds for auto-routing — the composition of
+ *     (≥50 historical calls per model) + (≥2 qualified models) +
+ *     (≥95% task-scoped success rate) + (≥0.25 confidence) +
+ *     (≥20% savings vs current route) is the patentable composition.
+ *     Each individual gate is well-known; the ordered composition is not.
+ *   Claim 4: Pre-request optimization runs BEFORE the request is dispatched
+ *     to a downstream provider — distinguishing this from post-hoc
+ *     analytics-driven model swap recommendations.
  */
 
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
@@ -31,6 +43,12 @@ interface ModelStats {
  * - 50+ historical calls exist for 2+ models
  * - Cheapest model has ≥95% success rate
  * - Savings exceed 20% vs current route
+ *
+ * [Patent 1, Claim 3] — The five gating thresholds below (50-call minimum,
+ *   ≥2 qualified models, 95% success rate, 0.25 confidence, 20% savings)
+ *   compose the auto-optimization decision rule.
+ * [Patent 1, Claim 4] — All evaluation occurs pre-request; no payload
+ *   leaves the gateway during this function.
  */
 export async function optimizeForCost(
   selectedRoute: RouteWithProfile,

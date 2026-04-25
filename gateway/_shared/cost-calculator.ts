@@ -4,6 +4,14 @@
  *
  * Mirror of supabase/functions/invoke/_shared/cost-calculator.ts — keep in sync.
  * See that file for full documentation.
+ *
+ * PATENT NOTICE — Patent 1 (Pending), Claim 2:
+ *   "Modality-aware pre-request cost projection." `resolveModality()` and
+ *   `projectCallCost()` together implement the modality discriminator and
+ *   per-modality unit pricing required by Claim 2. This is the canonical
+ *   point at which a (model_profile, estimated usage) pair is converted to
+ *   a USD figure for budget enforcement, route ordering, and post-call
+ *   billing. Keep this file as the single source of truth for that logic.
  */
 
 import { PROVIDER_MODALITY } from "./modalities.ts";

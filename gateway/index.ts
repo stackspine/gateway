@@ -4,7 +4,22 @@
  * Core API endpoint for routing AI model requests across multiple providers.
  * Implements intelligent routing (canary, primary, fallback), rate limiting,
  * budget enforcement, and comprehensive logging.
- * 
+ *
+ * PATENT NOTICE — Patents Pending:
+ *   Patent 1: "Pre-Request Budget Enforcement in a Multi-Model AI Routing System"
+ *     — task-scoped, modality-aware (chat / embedding / image / voice) cost
+ *       projection composed with route-strategy selection (canary / primary /
+ *       fallback) and circuit-breaker state.
+ *   Patent 2: "Compliance-Driven Route Filtering in a Multi-Model AI Control Plane"
+ *     — deny-by-default policy evaluation that filters candidate routes
+ *       before any payload is transmitted to a downstream provider.
+ *
+ * Implementation points are annotated with [Patent N, Claim M] references.
+ * The Apache 2.0 patent grant (Section 3) covers Contributions to this
+ * repository; the pending patent rights described above are separate from
+ * the Apache 2.0 grant. See gateway-oss/NOTICE for the full claim-to-file
+ * mapping.
+ *
  * @module invoke
  * @version 1.0.0
  */
@@ -27,6 +42,7 @@ import { scanForTopics, scanForCompetitors, scanForProfanity, redactGuardrailMat
 // Utilities
 // ============================================================================
 
+// [Patent 1, Claim 1(b)] — SHA-256 hash of provided API key for tenant lookup.
 async function hashApiKey(key: string): Promise<string> {
   const encoder = new TextEncoder();
   const data = encoder.encode(key);
@@ -35,6 +51,7 @@ async function hashApiKey(key: string): Promise<string> {
   return hashArray.map(b => b.toString(16).padStart(2, "0")).join("");
 }
 
+// [Patent 1, Claim 1(b)] — Timing-safe comparison against stored hash value.
 function secureCompare(a: string, b: string): boolean {
   if (a.length !== b.length) return false;
   const encoder = new TextEncoder();
@@ -45,7 +62,7 @@ const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
   "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type, x-api-key, x-api-version, x-region",
   "X-API-Version": "1",
-  
+  "X-Patent-Status": "Patent Pending — Pre-Request Budget Enforcement; Compliance-Driven Route Filtering",
 };
 
 // ============================================================================
@@ -292,6 +309,12 @@ serve(async (req) => {
 
     // ========================================================================
     // Step 3: Consolidated Pre-flight RPC (single DB round-trip)
+    // [Patent 1, Claim 1(c)(d)] — Single round-trip retrieval of budget rules,
+    //   spend aggregations, rate limits, idempotency cache, and compliance rules.
+    // [Patent 1, Claim 5] — Reduces database latency to a single round-trip
+    //   for all pre-request validation.
+    // [Patent 1, Claim 2(b)] — resolve_invoke_context stored procedure performs
+    //   the task-scoped projection of monthly spend by scope_id.
     // ========================================================================
 
     // deno-lint-ignore no-explicit-any
@@ -404,21 +427,39 @@ serve(async (req) => {
 
     // ========================================================================
     // Step 5: Budget Enforcement
+    // [Patent 1, Claim 1(e)(f)(g)] — Pre-request budget rule evaluation,
+    //   executed BEFORE any payload is transmitted to a downstream provider.
+    // [Patent 1, Claim 2(c)] — Iterates over budget rules, compares projected
+    //   spend against ceiling, blocks with HTTP 402 before tokens are consumed.
+    // [Patent 1, Claim 3] — Task-specific spend resolved via scope_id lookup
+    //   (task-scoped projection — distinct from org-wide aggregate enforcement).
+    // [Patent 1, Claim 6] — Monthly spend derived from daily_call_stats
+    //   materialized view (at most 31 rows) instead of scanning call logs.
+    // [Patent 1, Claim 8] — Error metadata includes budget_blocked flag and
+    //   blocked_by string distinguishing org-level vs task-level blocks.
+    // [Patent 1, Claim 2(d)] — Structured error schema with error string,
+    //   error code enumeration, and details object.
     // ========================================================================
 
     const budgetRules = ctx.budget_rules || [];
     const orgSpend = Number(ctx.monthly_spend) || 0;
+    // [Patent 1, Claim 1(d)] — Pre-computed daily spend aggregations.
     const taskSpends: Record<string, number> = ctx.task_spends || {};
 
     for (const rule of budgetRules) {
+      // [Patent 1, Claim 1(e)] — Compare aggregated spend against ceiling
+      //   for the corresponding scope (organization-wide OR task-specific).
       const spend = rule.scope_type === "org" 
         ? orgSpend 
         : (rule.scope_id ? Number(taskSpends[rule.scope_id]) || 0 : 0);
       
+      // [Patent 1, Claim 1(f)] — Block before forwarding to any downstream provider.
       if (spend >= rule.monthly_budget_usd) {
         const blockedBy = rule.scope_type === "org" ? "Organization budget" : "Task budget";
         console.warn(`Budget exceeded for org ${orgId}: $${spend.toFixed(4)} / $${rule.monthly_budget_usd.toFixed(2)}`);
         
+        // [Patent 1, Claim 1(f)] — Insert error record with zero token consumption
+        //   and metadata flag indicating budget-blocked status.
         await supabase.from("call_logs").insert({
           org_id: orgId, task_id: taskId, status: "error",
           error_message: `Budget limit exceeded: $${spend.toFixed(4)} / $${rule.monthly_budget_usd.toFixed(2)}`,
@@ -427,12 +468,15 @@ serve(async (req) => {
           trace_id: traceId, session_id: session_id || null, parent_trace_id: parent_trace_id || null,
         });
         
+        // [Patent 1, Claim 1(f)] — HTTP 402 with BUDGET_EXCEEDED code, spend/limit details.
         return new Response(
           JSON.stringify({ error: "Budget limit exceeded", code: "BUDGET_EXCEEDED", details: { blocked_by: blockedBy, current_spend_usd: spend, monthly_limit_usd: rule.monthly_budget_usd, message: `Monthly spending ($${spend.toFixed(4)}) has reached the budget limit ($${rule.monthly_budget_usd.toFixed(2)}).` } }),
           { status: 402, headers: { ...responseHeaders, "Content-Type": "application/json" } }
         );
       }
     }
+
+    // [Patent 1, Claim 1(g)] — No budget rule violated; proceed to routing.
 
     // ========================================================================
     // Step 5a: Usage Enforcement
@@ -696,6 +740,14 @@ serve(async (req) => {
 
     // ========================================================================
     // Step 6: Route Selection
+    // [Patent 2, Claim 1] — Compliance-driven route filtering. Candidate
+    //   routes are evaluated against deny-by-default data-policy rules; if
+    //   the eligible-route set is empty after filtering the request fails
+    //   with a structured COMPLIANCE_VIOLATION error rather than falling
+    //   back to a non-compliant provider.
+    // [Patent 1, Claim 2] — Modality-aware cost projection (chat / embedding /
+    //   image / voice) is performed via projectCallCost() before route
+    //   selection so cost-aware ordering uses the correct unit prices.
     // ========================================================================
 
     const { data: routes, error: routeError } = await supabase

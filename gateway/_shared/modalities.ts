@@ -16,6 +16,16 @@
  *
  * All handlers share the same return contract used by `callProvider()`:
  *   { ok, status, data?, errorText?, response? }
+ *
+ * PATENT NOTICE — Patent 1 (Pending), Claim 2:
+ *   The `units` / `unit_type` / `modality` envelope returned by every handler
+ *   is the data structure that lets `computeCost()` and `projectCallCost()`
+ *   bill non-chat modalities (image / voice / search / embedding) using
+ *   modality-specific unit prices. The `PROVIDER_MODALITY` map below also
+ *   acts as the fallback modality discriminator when a model_profile lacks
+ *   an explicit `modality` column. This file is part of the Claim 2
+ *   implementation set — do not collapse the envelope back into a
+ *   chat-only token count.
  */
 
 import type { RouteWithProfile } from "./types.ts";
