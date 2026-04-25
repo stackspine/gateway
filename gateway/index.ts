@@ -740,6 +740,14 @@ serve(async (req) => {
 
     // ========================================================================
     // Step 6: Route Selection
+    // [Patent 2, Claim 1] — Compliance-driven route filtering. Candidate
+    //   routes are evaluated against deny-by-default data-policy rules; if
+    //   the eligible-route set is empty after filtering the request fails
+    //   with a structured COMPLIANCE_VIOLATION error rather than falling
+    //   back to a non-compliant provider.
+    // [Patent 1, Claim 2] — Modality-aware cost projection (chat / embedding /
+    //   image / voice) is performed via projectCallCost() before route
+    //   selection so cost-aware ordering uses the correct unit prices.
     // ========================================================================
 
     const { data: routes, error: routeError } = await supabase
