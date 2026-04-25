@@ -4,7 +4,22 @@
  * Core API endpoint for routing AI model requests across multiple providers.
  * Implements intelligent routing (canary, primary, fallback), rate limiting,
  * budget enforcement, and comprehensive logging.
- * 
+ *
+ * PATENT NOTICE — Patents Pending:
+ *   Patent 1: "Pre-Request Budget Enforcement in a Multi-Model AI Routing System"
+ *     — task-scoped, modality-aware (chat / embedding / image / voice) cost
+ *       projection composed with route-strategy selection (canary / primary /
+ *       fallback) and circuit-breaker state.
+ *   Patent 2: "Compliance-Driven Route Filtering in a Multi-Model AI Control Plane"
+ *     — deny-by-default policy evaluation that filters candidate routes
+ *       before any payload is transmitted to a downstream provider.
+ *
+ * Implementation points are annotated with [Patent N, Claim M] references.
+ * The Apache 2.0 patent grant (Section 3) covers Contributions to this
+ * repository; the pending patent rights described above are separate from
+ * the Apache 2.0 grant. See gateway-oss/NOTICE for the full claim-to-file
+ * mapping.
+ *
  * @module invoke
  * @version 1.0.0
  */
