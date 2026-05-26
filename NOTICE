@@ -25,6 +25,14 @@ implementation details of this gateway, including:
        an empty-set compliance error rather than falling back to a
        non-compliant provider.
 
+  3. "Bounded Self-Optimizing Routing Under Hard Governance Constraints"
+     — envelope-gated route-weight optimization in which the optimizer
+       operates only on routes that have already passed compliance, region,
+       and circuit-breaker filtering, applies a bounded per-cycle weight
+       delta, asymmetrically suppresses upward weight moves during a budget
+       breach while still allowing downward moves, and emits a
+       machine-parseable routing-decision provenance record for each call.
+
 Budget enforcement and policy-based routing exist as broad concepts in
 other AI gateway products. The pending claims above are directed to the
 specific compositions and orderings described, not to the general ideas.
