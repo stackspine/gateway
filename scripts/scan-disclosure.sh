@@ -112,6 +112,32 @@ run_check "Savings-threshold leak"        '≥\s*20%\s*savings|>=\s*20%\s*saving
 run_check "Claim-to-file mapping block"   '(?im)^.*claim[- ]?to[- ]?file[- ]?mapping'
 run_check "Patent N Claim M decomposition tables" '(?m)^\s*Claim\s+[0-9]+\s+\(.*\)\s*$'
 
+# 4. INTERNAL-IP FOLDER LEAKS --------------------------------------------------
+# The docs/internal-ip/ tree contains pre-filing invention disclosure material
+# and MUST NOT be referenced from any publicly served surface. Scan the main
+# app tree (src/, public/, index.html) in addition to the gateway-oss tree.
+PUBLIC_SCAN_ROOTS=()
+[[ -d "src" ]]        && PUBLIC_SCAN_ROOTS+=("src")
+[[ -d "public" ]]     && PUBLIC_SCAN_ROOTS+=("public")
+[[ -f "index.html" ]] && PUBLIC_SCAN_ROOTS+=("index.html")
+
+if [[ ${#PUBLIC_SCAN_ROOTS[@]} -gt 0 ]]; then
+  echo ""
+  echo "── Internal-IP references in public surfaces ──"
+  if output=$(rg -n --color=never \
+                 -g '!**/node_modules/**' -g '!**/dist/**' \
+                 -g '!public/robots.txt' \
+                 -e 'internal-ip' -e 'invention-disclosure' -e 'Patent_III_Bounded_Self_Optimizing_Routing_Specification' \
+                 "${PUBLIC_SCAN_ROOTS[@]}"); then
+    echo "${output}"
+    count=$(printf "%s\n" "${output}" | wc -l | tr -d ' ')
+    echo "❌ ${count} reference(s) to internal pre-filing material in public surfaces."
+    VIOLATIONS=$((VIOLATIONS + count))
+  else
+    echo "✅ clean"
+  fi
+fi
+
 # Summary --------------------------------------------------------------------
 echo ""
 echo "════════════════════════════════════════════════════════════════"
