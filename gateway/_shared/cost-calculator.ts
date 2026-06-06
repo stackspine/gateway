@@ -4,14 +4,10 @@
  *
  * Canonical source of truth for per-modality cost projection.
  *
- * PATENT NOTICE — Patent 1 (Pending), Claim 2:
- *   "Modality-aware pre-request cost projection." `resolveModality()` and
- *   `projectCallCost()` together implement the modality discriminator and
- *   per-modality unit pricing required by Claim 2. This is the canonical
- *   point at which a (model_profile, estimated usage) pair is converted to
- *   a USD figure for budget enforcement, route ordering, and post-call
- *   billing. Keep this file as the single source of truth for that logic.
+ * This file implements behavior subject to pending US patent applications;
+ * see gateway-oss/NOTICE.
  */
+
 
 import { PROVIDER_MODALITY } from "./modalities.ts";
 

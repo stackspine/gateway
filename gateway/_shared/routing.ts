@@ -2,15 +2,10 @@
  * @fileoverview Route selection and circuit breaker logic
  * @module invoke/_shared/routing
  *
- * PATENT NOTICE — Patent 2 (Pending), Claims 1, 4, 5, 6, 7:
- *   This file is the canonical implementation site for "Compliance-Driven
- *   Route Filtering in a Multi-Model AI Control Plane." The deny-by-default
- *   data-policy filter, empty-set compliance error path, conditional
- *   evaluation, and prioritized strategy selection are all annotated below
- *   with [Patent 2, Claim N] references. See gateway-oss/NOTICE for the
- *   patent notice; the operative claim language is set forth in the USPTO
- *   filings of record.
+ * This file implements behavior subject to pending US patent applications;
+ * see gateway-oss/NOTICE.
  */
+
 
 import type { RouteWithProfile, RouteConditionRow, RouteContext } from "./types.ts";
 
@@ -110,16 +105,11 @@ export function selectRoute(routes: RouteWithProfile[], context?: RouteContext):
   let dataPolicyFilteredCount = 0;
   let eligible = routes;
 
-  // [Patent 2, Claim 1] — Compliance-driven route filtering: data residency
-  //   policies constrain route selection *before* any payload is transmitted
-  //   to a downstream provider.
-  // [Patent 2, Claim 4] — Policy association matching: each route carries
-  //   zero or more data policy associations (e.g., GDPR, HIPAA) specifying
-  //   allowed geographic regions; only routes whose policies permit the
-  //   detected region survive filtering.
-  // [Patent 2, Claim 5] — Empty-set compliance error: when no routes match
-  //   the required data policy, the system returns an error without
-  //   transmitting any payload to a downstream provider.
+  // Compliance-driven route filtering: data-residency policies constrain
+  // route selection before any payload is transmitted to a downstream
+  // provider. When no eligible routes match, fail closed with a structured
+  // error rather than fall back to a non-compliant provider.
+
   if (context?.data_policy) {
     const policyName = context.data_policy;
     const policyFiltered = eligible.filter(r => {
@@ -133,22 +123,21 @@ export function selectRoute(routes: RouteWithProfile[], context?: RouteContext):
     if (policyFiltered.length > 0) {
       eligible = policyFiltered;
     } else {
-      // [Patent 2, Claim 5] — Compliance error without payload transmission
       throw new Error(`No routes match data policy: ${policyName}`);
     }
   }
 
-  // [Patent 2, Claim 1] — Geographic region filtering: routes tagged with
-  //   a specific region are excluded when they do not match the detected
-  //   caller region; untagged (global) routes serve as fallbacks.
+  // Region-tagged routes are excluded when they do not match the detected
+  // caller region; untagged (global) routes serve as fallbacks.
+
   if (context?.region) {
     eligible = eligible.filter(r => !r.region || r.region === context.region);
     if (eligible.length === 0) eligible = routes.filter(r => !r.region);
   }
 
-  // [Patent 2, Claim 6] — Conditional evaluation: surviving candidates
-  //   undergo further filtering via route-level conditions before strategy
-  //   selection.
+  // Surviving candidates undergo further filtering via route-level conditions
+  // before strategy selection.
+
   if (context) {
     eligible = eligible.filter(r => {
       const passes = evaluateRouteConditions(r, context);
@@ -171,8 +160,9 @@ export function selectRoute(routes: RouteWithProfile[], context?: RouteContext):
     return true;
   };
 
-  // [Patent 2, Claim 7] — Prioritized strategy selection: weighted canary →
-  //   primary → fallback, with circuit-breaker exclusion at each tier.
+  // Prioritized strategy selection: weighted canary → primary → fallback,
+  // with circuit-breaker exclusion at each tier.
+
   const primaryRoutes = eligible.filter(r => r.strategy === "primary" && isRouteHealthy(r));
   const canaryRoutes = eligible.filter(r => r.strategy === "canary" && isRouteHealthy(r));
 

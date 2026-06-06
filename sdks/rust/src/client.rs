@@ -233,7 +233,6 @@ fn parse_error(status: u16, body: &str, request_id: Option<String>) -> Error {
             request_id,
             retry_after: parsed["retry_after"].as_f64().unwrap_or(60.0),
         },
-        // [Patent 1, Claim 1(f)] — Structured 402 BUDGET_EXCEEDED response.
         // See "Pre-Request Budget Enforcement in a Multi-Model AI Routing System."
         402 => Error::BudgetExceeded {
             message,

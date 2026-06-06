@@ -190,7 +190,6 @@ func (c *Client) doWithRetry(ctx context.Context, method, path string, body any,
 			}
 			return nil, &RateLimitError{StatusCode: resp.StatusCode, Message: apiErr.Message, RequestID: reqID, RetryAfter: retryAfter}
 		}
-		// [Patent 1, Claim 1(f)] — Structured 402 BUDGET_EXCEEDED response.
 		// See "Pre-Request Budget Enforcement in a Multi-Model AI Routing System."
 		if resp.StatusCode == 402 {
 			apiErr := NewAPIError(resp.StatusCode, data, reqID)

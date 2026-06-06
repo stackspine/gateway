@@ -112,6 +112,50 @@ run_check "Savings-threshold leak"        '≥\s*20%\s*savings|>=\s*20%\s*saving
 run_check "Claim-to-file mapping block"   '(?im)^.*claim[- ]?to[- ]?file[- ]?mapping'
 run_check "Patent N Claim M decomposition tables" '(?m)^\s*Claim\s+[0-9]+\s+\(.*\)\s*$'
 
+# 3b. Bare numeric leaks anywhere in gateway/_shared/ — catches the exact
+# cost-optimizer composition (50 / 2 / 0.95 / 0.25 / 0.20) even when the
+# values are split across lines. cost-calculator.ts is excluded because it
+# legitimately handles arbitrary per-modality unit prices.
+echo ""
+echo "── Cost-optimizer threshold leak in gateway/_shared/ ──"
+shared_dir="${ROOT}/gateway/_shared"
+if [[ -d "${shared_dir}" ]]; then
+  if output=$(rg -n --color=never \
+                 -g '!cost-calculator.ts' -g '!modalities.ts' \
+                 -e '>=\s*0?\.95' -e '>=\s*0?\.25' -e '>=\s*0?\.20' -e '>=\s*50\b' \
+                 "${shared_dir}"); then
+    echo "${output}"
+    count=$(printf "%s\n" "${output}" | wc -l | tr -d ' ')
+    echo "❌ ${count} bare threshold value(s) in gateway/_shared/ — cost optimizer should not ship in OSS."
+    VIOLATIONS=$((VIOLATIONS + count))
+  else
+    echo "✅ clean"
+  fi
+fi
+
+# 3c. Inline `[Patent N, Claim M]` annotations form a claim-chart and must
+# never appear in any OSS source file.
+run_check "Inline patent-claim annotations" '\[Patent\s+\d+,\s*Claim'
+
+# 3d. Patent 3 ("Bounded Self-Optimizing Routing") implementation must stay
+# in StackSpine Cloud, never in OSS. Test files that call the URL of the
+# managed edge function are allowed.
+echo ""
+echo "── Patent 3 implementation absence in OSS ──"
+if output=$(rg -n --color=never \
+               -g '!**/tests/**' -g '!**/scan-disclosure.sh' -g '!NOTICE' \
+               -e 'optimize-route-weights' -e 'bounded\s+self.optimi' -e 'weight_delta' -e 'asymmetric.*weight' \
+               "${ROOT}"); then
+  echo "${output}"
+  count=$(printf "%s\n" "${output}" | wc -l | tr -d ' ')
+  echo "❌ ${count} Patent-3 implementation reference(s) leaked into OSS."
+  VIOLATIONS=$((VIOLATIONS + count))
+else
+  echo "✅ clean"
+fi
+
+
+
 # 4. INTERNAL-IP FOLDER LEAKS --------------------------------------------------
 # The docs/internal-ip/ tree contains pre-filing invention disclosure material
 # and MUST NOT be referenced from any publicly served surface. Scan the main
