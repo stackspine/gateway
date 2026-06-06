@@ -169,3 +169,32 @@ jobs:
           tags: |
             ghcr.io/stackspine/gateway:${{ steps.version.outputs.version }}
             ghcr.io/stackspine/gateway:latest
+
+  publish-helm:
+    name: Publish — Helm (OCI to GHCR)
+    needs: disclosure-scan
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Install Helm
+        uses: azure/setup-helm@v4
+        with:
+          version: v3.14.0
+      - name: Extract version
+        id: version
+        run: |
+          VERSION="${{ github.event.release.tag_name }}"
+          VERSION="${VERSION#v}"
+          echo "version=${VERSION}" >> "$GITHUB_OUTPUT"
+      - name: Set chart version + appVersion
+        run: |
+          V="${{ steps.version.outputs.version }}"
+          sed -i "s/^version: .*/version: ${V}/" deploy/helm/Chart.yaml
+          sed -i "s/^appVersion: .*/appVersion: \"${V}\"/" deploy/helm/Chart.yaml
+      - name: Package chart
+        run: helm package deploy/helm -d /tmp/chart
+      - name: Log in to GHCR
+        run: echo "${{ secrets.GITHUB_TOKEN }}" | helm registry login ghcr.io -u ${{ github.actor }} --password-stdin
+      - name: Push chart
+        run: helm push /tmp/chart/stackspine-${{ steps.version.outputs.version }}.tgz oci://ghcr.io/stackspine/charts
+
