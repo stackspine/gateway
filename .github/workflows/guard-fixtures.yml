@@ -1,0 +1,42 @@
+name: Public-Repo-Guard Fixtures
+
+# Validates the public-repo-guard rules against the fixture library so that
+# any regression in the rules (or in the fixtures) blocks merging.
+#
+# pass/<case>/  → guard.sh MUST exit 0
+# fail/<case>/  → guard.sh MUST exit 1
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - "gateway-oss/scripts/guard.sh"
+      - "gateway-oss/scripts/run-guard-fixtures.sh"
+      - "gateway-oss/.github/workflows/public-repo-guard.yml"
+      - "gateway-oss/.github/workflows/guard-fixtures.yml"
+      - "gateway-oss/tests/fixtures/public-repo-guard/**"
+  pull_request:
+    branches: [main]
+    paths:
+      - "gateway-oss/scripts/guard.sh"
+      - "gateway-oss/scripts/run-guard-fixtures.sh"
+      - "gateway-oss/.github/workflows/public-repo-guard.yml"
+      - "gateway-oss/.github/workflows/guard-fixtures.yml"
+      - "gateway-oss/tests/fixtures/public-repo-guard/**"
+
+permissions:
+  contents: read
+
+jobs:
+  fixtures:
+    name: Run guard fixture library
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: gateway-oss
+    steps:
+      - uses: actions/checkout@v4
+      - name: Install ripgrep
+        run: sudo apt-get update && sudo apt-get install -y ripgrep
+      - name: Validate fixtures
+        run: bash scripts/run-guard-fixtures.sh
