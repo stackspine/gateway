@@ -48,8 +48,8 @@ const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
   "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type, x-api-key, x-api-version, x-region",
   "X-API-Version": "1",
-  "X-Patent-Status": "Patent Pending — Pre-Request Budget Enforcement; Compliance-Driven Route Filtering",
 };
+
 
 // ============================================================================
 // Budget Alerts (fire-and-forget post-call)
