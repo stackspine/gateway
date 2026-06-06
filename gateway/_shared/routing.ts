@@ -105,13 +105,11 @@ export function selectRoute(routes: RouteWithProfile[], context?: RouteContext):
   let dataPolicyFilteredCount = 0;
   let eligible = routes;
 
-  //   policies constrain route selection *before* any payload is transmitted
-  //   to a downstream provider.
-  //   zero or more data policy associations (e.g., GDPR, HIPAA) specifying
-  //   allowed geographic regions; only routes whose policies permit the
-  //   detected region survive filtering.
-  //   the required data policy, the system returns an error without
-  //   transmitting any payload to a downstream provider.
+  // Compliance-driven route filtering: data-residency policies constrain
+  // route selection before any payload is transmitted to a downstream
+  // provider. When no eligible routes match, fail closed with a structured
+  // error rather than fall back to a non-compliant provider.
+
   if (context?.data_policy) {
     const policyName = context.data_policy;
     const policyFiltered = eligible.filter(r => {
