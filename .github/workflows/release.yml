@@ -5,7 +5,7 @@ on:
     types: [published]
 
 permissions:
-  contents: read
+  contents: write
   packages: write
 
 jobs:
@@ -13,9 +13,45 @@ jobs:
     name: Pre-release disclosure scan
     uses: ./.github/workflows/scan-disclosure.yml
 
+  release-notes:
+    name: Generate release notes
+    needs: disclosure-scan
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Extract version + changelog section
+        id: notes
+        run: |
+          VERSION="${{ github.event.release.tag_name }}"
+          VERSION_NUM="${VERSION#v}"
+          # Pull the matching ## [X.Y.Z] section out of CHANGELOG.md
+          awk -v v="${VERSION_NUM}" '
+            $0 ~ "^## \\[" v "\\]" {flag=1; print; next}
+            flag && /^## \[/ {exit}
+            flag {print}
+          ' CHANGELOG.md > release-notes.md
+          {
+            echo ""
+            echo "## Compatibility"
+            echo ""
+            echo "| Component | Version |"
+            echo "|---|---|"
+            echo "| Docker image | \`ghcr.io/stackspine/gateway:${VERSION_NUM}\` |"
+            echo "| Helm chart   | \`oci://ghcr.io/stackspine/charts/stackspine:${VERSION_NUM}\` |"
+            echo "| DB schema    | \`migrations/000_core_schema.sql\` @ ${VERSION_NUM} |"
+            echo "| SDK range    | \`>=${VERSION_NUM%%.*}.0.0 <$((${VERSION_NUM%%.*}+1)).0.0\` |"
+            echo ""
+            echo "See [deploy/SELF-HOST.md](./deploy/SELF-HOST.md#compatibility-matrix) for the full matrix."
+          } >> release-notes.md
+      - name: Update GitHub release body
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: gh release edit "${{ github.event.release.tag_name }}" --notes-file release-notes.md
+
   publish-npm:
     name: Publish — npm
     needs: disclosure-scan
+
     name: Publish — npm
     runs-on: ubuntu-latest
     defaults:
