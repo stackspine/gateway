@@ -48,8 +48,8 @@ StackSpine Gateway is a **task-level AI control plane** that sits between your a
 | **Multi-modality** | Chat, embeddings, image generation, voice (TTS + STT), and grounded search — unified through one endpoint with per-modality unit metering |
 | **Multi-provider routing** | Primary, canary (weighted A/B), and fallback strategies |
 | **Circuit breaker** | 3-state (closed/open/half-open) per provider with configurable threshold |
-| **Budget enforcement** ⚡ | Pre-request blocking (HTTP 402) when spend exceeds limits *(Patent Pending)* |
-| **Cost optimization** ⚡ | Auto-selects cheapest qualifying model when confidence is high *(Patent Pending)* |
+| **Budget enforcement** | Pre-request blocking (HTTP 402) when spend exceeds limits |
+| **Cost optimization** _(StackSpine Cloud)_ | Auto-selects cheapest qualifying model when confidence is high |
 | **Rate limiting** | Per-IP and per-API-key with sliding window |
 | **Compliance guardrails** | PII detection/redaction, topic blocking, profanity filtering |
 | **Prompt caching** | SHA-256 exact-match cache with configurable TTL |
@@ -62,7 +62,7 @@ StackSpine Gateway is a **task-level AI control plane** that sits between your a
 | **W3C tracing** | `traceparent` and `X-Trace-Id` on every response |
 | **Idempotency** | Replay cached responses for duplicate requests |
 
-> ⚡ **Patent Pending** — StackSpine's pre-request cost projection and budget enforcement technology is the subject of pending patent applications. See [LICENSE](LICENSE) for the Apache 2.0 patent grant.
+> Some features below are the subject of pending US patent applications; see [NOTICE](NOTICE). The Apache 2.0 license and its patent grant apply to all users.
 
 ## Quick Start
 
@@ -197,7 +197,7 @@ The gateway is a single Deno edge function that:
 
 1. **Authenticates** — SHA-256 timing-safe API key validation
 2. **Rate limits** — Atomic check-and-increment in PostgreSQL
-3. **Enforces budgets** — Queries `daily_call_stats` aggregation table (~31 rows/month) to project cost *(Patent Pending)*
+3. **Enforces budgets** — Queries `daily_call_stats` aggregation table (~31 rows/month) to project cost
 4. **Scans compliance** — PII detection, topic blocking, profanity filtering
 5. **Selects route** — Conditional → canary (weighted) → primary → fallback
 6. **Calls provider** — Any of 100+ providers across 7 modalities: frontier labs, inference hosts, cloud (Bedrock SigV4, Vertex GCP JWT, watsonx IAM, OCI signing), self-hosted, embeddings, image, voice, and grounded search
