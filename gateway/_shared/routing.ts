@@ -2,14 +2,10 @@
  * @fileoverview Route selection and circuit breaker logic
  * @module invoke/_shared/routing
  *
- * PATENT NOTICE — Patent 2 (Pending), Claims 1, 4, 5, 6, 7:
- *   This file is the canonical implementation site for "Compliance-Driven
- *   Route Filtering in a Multi-Model AI Control Plane." The deny-by-default
- *   data-policy filter, empty-set compliance error path, conditional
- *   evaluation, and prioritized strategy selection are all annotated below
- *   patent notice; the operative claim language is set forth in the USPTO
- *   filings of record.
+ * This file implements behavior subject to pending US patent applications;
+ * see gateway-oss/NOTICE.
  */
+
 
 import type { RouteWithProfile, RouteConditionRow, RouteContext } from "./types.ts";
 
