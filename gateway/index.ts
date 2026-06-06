@@ -844,7 +844,6 @@ serve(async (req) => {
     // historical performance) is implemented in StackSpine Cloud and is not
     // bundled with the OSS gateway. Self-hosters route to the configured
     // primary/canary/fallback without runtime model substitution.
-    const costOptResult: null = null;
 
     try {
       const selection = selectRoute(sortedRoutes, routeContext);
@@ -1003,7 +1002,7 @@ serve(async (req) => {
             org_id: orgId, task_id: taskId, model_profile_id: modelProfileId, provider_id: providerId,
             status: "success", latency_ms: finalLatency, input_tokens: inputTokens, output_tokens: outputTokens,
             total_tokens: totalTokens, cost_usd: totalCost, request_idempotency_key: idempotency_key || null,
-            metadata: { streaming: true, route_strategy: usedRoute!.strategy, was_canary: wasCanary, prompt_version_id: promptVersionId, region: detectedRegion, context_compressed: contextCompressed, original_tokens: contextOriginalTokens, compressed_tokens: contextCompressedTokens, ...(costOptResult?.wasOptimized ? { cost_optimized: true, original_model_profile_id: costOptResult.originalModelProfileId, predicted_cost: costOptResult.predictedCostUsd, confidence: costOptResult.confidence } : {}) },
+            metadata: { streaming: true, route_strategy: usedRoute!.strategy, was_canary: wasCanary, prompt_version_id: promptVersionId, region: detectedRegion, context_compressed: contextCompressed, original_tokens: contextOriginalTokens, compressed_tokens: contextCompressedTokens },
             trace_id: traceId, session_id: session_id || null, parent_trace_id: parent_trace_id || null,
           });
 
@@ -1166,7 +1165,7 @@ serve(async (req) => {
         usage: { input_tokens: inputTokens, output_tokens: outputTokens, total_tokens: totalTokens },
         cost_usd: totalCost, latency_ms: latencyMs,
         ...(contextCompressed ? { context_compressed: true, original_tokens: contextOriginalTokens, compressed_tokens: contextCompressedTokens } : {}),
-        ...(costOptResult?.wasOptimized ? { cost_optimized: true, predicted_cost: costOptResult.predictedCostUsd, optimization_confidence: costOptResult.confidence } : {}),
+        
         completion_insurance: true,
       }),
       { status: 200, headers: { ...responseHeaders, ...usageHeaders, ...sessionHeaders, "Content-Type": "application/json" } }
