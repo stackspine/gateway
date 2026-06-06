@@ -1,23 +1,12 @@
 /**
  * @fileoverview StackSpine Unified AI Invoke API
- * 
+ *
  * Core API endpoint for routing AI model requests across multiple providers.
  * Implements intelligent routing (canary, primary, fallback), rate limiting,
  * budget enforcement, and comprehensive logging.
  *
- * PATENT NOTICE — Patents Pending:
- *   Patent 1: "Pre-Request Budget Enforcement in a Multi-Model AI Routing System"
- *     — task-scoped, modality-aware (chat / embedding / image / voice) cost
- *       projection composed with route-strategy selection (canary / primary /
- *       fallback) and circuit-breaker state.
- *   Patent 2: "Compliance-Driven Route Filtering in a Multi-Model AI Control Plane"
- *     — deny-by-default policy evaluation that filters candidate routes
- *       before any payload is transmitted to a downstream provider.
- *
- * The Apache 2.0 patent grant (Section 3) covers Contributions to this
- * repository; the pending patent rights described above are separate from
- * the Apache 2.0 grant. See gateway-oss/NOTICE for the full claim-to-file
- * mapping.
+ * This file implements behavior subject to pending US patent applications;
+ * see gateway-oss/NOTICE.
  *
  * @module invoke
  * @version 1.0.0
@@ -33,9 +22,9 @@ import { getClientIp, RATE_LIMIT_WINDOW_MS, RATE_LIMIT_MAX_REQUESTS_PER_KEY, RAT
 import { selectRoute, getCircuitState, isCircuitOpen } from "./_shared/routing.ts";
 import { callProvider } from "./_shared/providers.ts";
 import { portContext } from "./_shared/context-porter.ts";
-import { optimizeForCost, recordCostPrediction, type CostOptimizationResult } from "./_shared/cost-optimizer.ts";
 import { computeCost, projectCallCost } from "./_shared/cost-calculator.ts";
 import { scanForTopics, scanForCompetitors, scanForProfanity, redactGuardrailMatches, type GuardrailScanResult } from "./_shared/guardrails.ts";
+
 
 // ============================================================================
 // Utilities
