@@ -135,8 +135,9 @@ export function selectRoute(routes: RouteWithProfile[], context?: RouteContext):
     if (eligible.length === 0) eligible = routes.filter(r => !r.region);
   }
 
-  //   undergo further filtering via route-level conditions before strategy
-  //   selection.
+  // Surviving candidates undergo further filtering via route-level conditions
+  // before strategy selection.
+
   if (context) {
     eligible = eligible.filter(r => {
       const passes = evaluateRouteConditions(r, context);
