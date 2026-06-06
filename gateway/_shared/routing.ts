@@ -127,8 +127,9 @@ export function selectRoute(routes: RouteWithProfile[], context?: RouteContext):
     }
   }
 
-  //   a specific region are excluded when they do not match the detected
-  //   caller region; untagged (global) routes serve as fallbacks.
+  // Region-tagged routes are excluded when they do not match the detected
+  // caller region; untagged (global) routes serve as fallbacks.
+
   if (context?.region) {
     eligible = eligible.filter(r => !r.region || r.region === context.region);
     if (eligible.length === 0) eligible = routes.filter(r => !r.region);
