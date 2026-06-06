@@ -1112,11 +1112,8 @@ serve(async (req) => {
       }).then(() => {}).catch((e: Error) => console.error("Experiment assignment failed:", e));
     }
 
-    // Record cost prediction for feedback loop
-    if (costOptResult && costOptResult.predictedCostUsd > 0) {
-      recordCostPrediction(supabase, orgId, taskId, callLog?.id || null, costOptResult, totalCost)
-        .catch((e: Error) => console.error("Cost prediction recording failed:", e));
-    }
+    // Cost-prediction feedback loop is a StackSpine Cloud feature; OSS records nothing here.
+
 
     if (cacheEnabled && !cacheHit && cacheKeyHash && content) {
       const cacheTtlMinutes = orgData?.prompt_cache_ttl_minutes || 60;
