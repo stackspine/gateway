@@ -1,1 +1,2 @@
-GITHUB_TOKEN=ghp_abcdefghijklmnopqrstuvwxyz0123456789
+# GitHub server-to-server token (matches gh[ousr]_ pattern)
+GITHUB_TOKEN=***REDACTED-GITHUB-TOKEN***
