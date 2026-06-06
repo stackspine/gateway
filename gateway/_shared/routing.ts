@@ -160,7 +160,9 @@ export function selectRoute(routes: RouteWithProfile[], context?: RouteContext):
     return true;
   };
 
-  //   primary → fallback, with circuit-breaker exclusion at each tier.
+  // Prioritized strategy selection: weighted canary → primary → fallback,
+  // with circuit-breaker exclusion at each tier.
+
   const primaryRoutes = eligible.filter(r => r.strategy === "primary" && isRouteHealthy(r));
   const canaryRoutes = eligible.filter(r => r.strategy === "canary" && isRouteHealthy(r));
 
