@@ -36,10 +36,23 @@ We credit security researchers in our changelog (with permission) and maintain a
 
 ## Supported Versions
 
-| Version | Supported |
-|---------|-----------|
-| 1.x     | ✅        |
-| < 1.0   | ❌        |
+Security fixes land on the latest minor of the current major. Older minors
+receive fixes only for critical (CVSS ≥ 9.0) vulnerabilities for 90 days after
+a newer minor ships.
+
+| Version | Supported          |
+|---------|--------------------|
+| 1.x (latest minor) | ✅ full support |
+| 1.x (older minors) | ⚠️ critical fixes only, 90 days |
+| < 1.0   | ❌ unsupported     |
+
+## Coordinated Disclosure
+
+We follow a 90-day coordinated disclosure window. Reporters who give us time
+to ship a fix before publishing are credited in the release notes and in
+`CHANGELOG.md`. We will never threaten legal action against good-faith
+researchers operating within this policy.
+
 
 ## Security Best Practices
 
