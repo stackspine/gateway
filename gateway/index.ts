@@ -840,29 +840,17 @@ serve(async (req) => {
     let contextCompressed = false;
     let contextOriginalTokens = 0;
     let contextCompressedTokens = 0;
-    let costOptResult: CostOptimizationResult | null = null;
+    // Cost optimization (auto-selecting the cheapest qualifying model based on
+    // historical performance) is implemented in StackSpine Cloud and is not
+    // bundled with the OSS gateway. Self-hosters route to the configured
+    // primary/canary/fallback without runtime model substitution.
+    const costOptResult: null = null;
 
     try {
       const selection = selectRoute(sortedRoutes, routeContext);
-      let selectedRoute = selection.selectedRoute;
+      const selectedRoute = selection.selectedRoute;
       circuitBreakerSkipped = selection.circuitBreakerSkipped;
 
-      // Cost optimization: auto-select cheapest qualifying model if confidence is high
-      const autoOptimize = task.auto_optimize_routing ?? false;
-      if (autoOptimize && !experimentId && routingSuffix !== "speed") {
-        try {
-          costOptResult = await optimizeForCost(
-            selectedRoute, sortedRoutes, routeContext.estimated_tokens,
-            taskId, orgId, supabase
-          );
-          if (costOptResult.wasOptimized) {
-            selectedRoute = costOptResult.optimizedRoute;
-            console.log(`Cost optimization: switched from ${costOptResult.originalModelProfileId} to ${selectedRoute.model_profile_id}`);
-          }
-        } catch (e) {
-          console.error("Cost optimization failed, using original route:", e);
-        }
-      }
 
       const modelProfile = selectedRoute.model_profiles;
       const provider = modelProfile?.providers_with_key;
