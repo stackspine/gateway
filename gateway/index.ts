@@ -1095,7 +1095,7 @@ serve(async (req) => {
         route_strategy: usedRoute.strategy, was_canary: wasCanary, prompt_version_id: promptVersionId, region: detectedRegion,
         context_compressed: contextCompressed, original_tokens: contextOriginalTokens, compressed_tokens: contextCompressedTokens,
         experiment_id: experimentId, experiment_variant_id: experimentVariantId,
-        ...(costOptResult?.wasOptimized ? { cost_optimized: true, original_model_profile_id: costOptResult.originalModelProfileId, predicted_cost: costOptResult.predictedCostUsd, confidence: costOptResult.confidence } : {}),
+        
         ...(idempotency_key ? { cached_response: { trace_id: traceId, content, model: modelProfile.provider_model_name, provider: provider.type, route_strategy: usedRoute.strategy, was_canary: wasCanary, usage: { input_tokens: inputTokens, output_tokens: outputTokens, total_tokens: totalTokens }, cost_usd: totalCost, latency_ms: latencyMs } } : {})
       },
     }).select("id").single();
