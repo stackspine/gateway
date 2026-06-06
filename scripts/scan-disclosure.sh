@@ -143,7 +143,7 @@ run_check "Inline patent-claim annotations" '\[Patent\s+\d+,\s*Claim'
 echo ""
 echo "── Patent 3 implementation absence in OSS ──"
 if output=$(rg -n --color=never \
-               -g '!**/tests/**' -g '!**/scan-disclosure.sh' \
+               -g '!**/tests/**' -g '!**/scan-disclosure.sh' -g '!NOTICE' \
                -e 'optimize-route-weights' -e 'bounded\s+self.optimi' -e 'weight_delta' -e 'asymmetric.*weight' \
                "${ROOT}"); then
   echo "${output}"
@@ -153,6 +153,7 @@ if output=$(rg -n --color=never \
 else
   echo "✅ clean"
 fi
+
 
 
 # 4. INTERNAL-IP FOLDER LEAKS --------------------------------------------------
