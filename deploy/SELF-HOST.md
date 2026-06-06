@@ -1,6 +1,16 @@
 # Self-Host Guide
 
-StackSpine can be self-hosted using Docker Compose or Kubernetes (Helm).
+StackSpine Gateway can be self-hosted using Docker Compose or Kubernetes (Helm).
+
+## Compatibility Matrix
+
+| Gateway image           | DB schema                              | SDK range          | Postgres |
+|-------------------------|----------------------------------------|--------------------|----------|
+| `ghcr.io/stackspine/gateway:1.x` | `migrations/000_core_schema.sql` @ 1.x | `>=1.0.0 <2.0.0` | 14, 15, 16 |
+
+Pin a specific tag in production (e.g. `:1.2.3`). The `:latest` tag tracks the
+newest release in the current major and may include breaking changes on a major
+bump.
 
 ## Quick Start with Docker Compose
 

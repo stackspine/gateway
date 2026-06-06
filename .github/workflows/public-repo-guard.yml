@@ -1,0 +1,129 @@
+name: Public Repo Guard
+
+# Hard gate for the public stackspine/gateway repository.
+#
+# Blocks any push or PR that introduces:
+#   1. Disallowed top-level paths (control-plane code, mobile shells, private
+#      infra) that belong to the private monorepo only.
+#   2. Real-looking secrets, credentials, or private Supabase project refs.
+#   3. References to internal pre-filing IP material.
+#
+# This workflow is INTENDED to live in the extracted public repo. It also runs
+# inside the monorepo against the gateway-oss/ subtree as an early warning.
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+
+permissions:
+  contents: read
+
+jobs:
+  disallowed-paths:
+    name: Block disallowed paths
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Determine scan root
+        id: root
+        run: |
+          if [ -d "gateway-oss" ]; then
+            echo "root=gateway-oss" >> "$GITHUB_OUTPUT"
+          else
+            echo "root=." >> "$GITHUB_OUTPUT"
+          fi
+
+      - name: Reject disallowed top-level paths
+        run: |
+          set -e
+          ROOT="${{ steps.root.outputs.root }}"
+          # Paths below must NEVER exist inside the public OSS tree.
+          DISALLOWED=(
+            "src"
+            "supabase/functions"
+            "supabase/config.toml"
+            "android"
+            "ios"
+            "capacitor.config.ts"
+            "packages/sdk-js"
+            "packages/sdk-python"
+            "packages/sdk-go"
+            "packages/sdk-ruby"
+            "packages/sdk-rust"
+            "docs/internal-ip"
+            ".env"
+          )
+          FAIL=0
+          for p in "${DISALLOWED[@]}"; do
+            full="${ROOT}/${p}"
+            # Strip leading ./ for clean output when ROOT is "."
+            full="${full#./}"
+            if [ -e "${full}" ]; then
+              echo "❌ Disallowed path present in public OSS tree: ${full}"
+              FAIL=1
+            fi
+          done
+          if [ "${FAIL}" -eq 1 ]; then
+            echo ""
+            echo "These paths belong to the private monorepo and must never be"
+            echo "published. Remove them from the subtree before pushing."
+            exit 1
+          fi
+          echo "✅ No disallowed paths present."
+
+      - name: Reject control-plane imports
+        run: |
+          set -e
+          ROOT="${{ steps.root.outputs.root }}"
+          if grep -rEn \
+              -e 'from ["'"'"']@/(pages|components|contexts|hooks|integrations/supabase)' \
+              -e 'supabase/functions/(invoke|write-audit-log|optimize-route-weights|cost-optimizer)' \
+              --include='*.ts' --include='*.tsx' --include='*.js' \
+              "${ROOT}" 2>/dev/null; then
+            echo "❌ Found imports from the private control plane."
+            exit 1
+          fi
+          echo "✅ No control-plane imports."
+
+  secret-scan:
+    name: Block secrets and private infra refs
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Install ripgrep
+        run: sudo apt-get update && sudo apt-get install -y ripgrep
+
+      - name: Run disclosure scanner
+        run: bash scripts/scan-disclosure.sh
+        working-directory: ${{ hashFiles('gateway-oss/scripts/scan-disclosure.sh') != '' && 'gateway-oss' || '.' }}
+
+      - name: Extra credential patterns
+        run: |
+          set -e
+          # These are independent of scan-disclosure.sh and act as a second net.
+          PATTERNS=(
+            'BEGIN (RSA|EC|OPENSSH|PGP) PRIVATE KEY'
+            'xox[baprs]-[A-Za-z0-9-]{10,}'                  # Slack tokens
+            'gh[ousr]_[A-Za-z0-9]{30,}'                     # GitHub tokens
+            'AIza[0-9A-Za-z_-]{35}'                         # Google API
+            'sk-[A-Za-z0-9]{32,}'                           # OpenAI
+            'sk-ant-[A-Za-z0-9_-]{20,}'                     # Anthropic
+            'AKIA[0-9A-Z]{16}'                              # AWS
+            'eyJhbGciOi[A-Za-z0-9_-]+\.eyJ[A-Za-z0-9_-]+\.[A-Za-z0-9_-]+' # JWTs
+          )
+          FAIL=0
+          for pat in "${PATTERNS[@]}"; do
+            if rg -n --hidden \
+                 -g '!**/node_modules/**' \
+                 -g '!**/public-repo-guard.yml' \
+                 -g '!**/scan-disclosure.sh' \
+                 -e "${pat}" .; then
+              echo "❌ Pattern matched: ${pat}"
+              FAIL=1
+            fi
+          done
+          [ "${FAIL}" -eq 0 ] && echo "✅ No credential patterns matched." || exit 1
