@@ -11,43 +11,21 @@ This product includes software developed by StackSpine, Inc.
 
 PATENT NOTICE
 
-StackSpine has filed pending patent applications covering specific
-implementation details of this gateway, including:
+StackSpine has filed pending US patent applications covering specific
+implementation details of this gateway, including pre-request budget
+enforcement, compliance-driven route filtering, and bounded self-optimizing
+routing.
 
-  1. "Pre-Request Budget Enforcement in a Multi-Model AI Routing System"
-     — task-scoped, modality-aware (chat / embedding / image / voice) cost
-       projection composed with route-strategy selection (canary / primary /
-       fallback) and circuit-breaker state.
+Budget enforcement, policy-based routing, and adaptive load balancing exist
+as broad concepts in other AI gateway products. The pending claims are
+directed to specific compositions and orderings, not to the general ideas.
 
-  2. "Compliance-Driven Route Filtering in a Multi-Model AI Control Plane"
-     — deny-by-default policy evaluation that filters candidate routes
-       before any payload is transmitted to a downstream provider, returning
-       an empty-set compliance error rather than falling back to a
-       non-compliant provider.
+The Apache 2.0 patent grant (Section 3) applies to this software for all
+users on the same terms as the rest of the Apache 2.0 License. The pending
+applications referenced above are disclosed here for transparency and to
+establish priority; they do not modify the rights you receive under the
+Apache 2.0 License.
 
-  3. "Bounded Self-Optimizing Routing Under Hard Governance Constraints"
-     — envelope-gated route-weight optimization in which the optimizer
-       operates only on routes that have already passed compliance, region,
-       and circuit-breaker filtering, applies a bounded per-cycle weight
-       delta, asymmetrically suppresses upward weight moves during a budget
-       breach while still allowing downward moves, and emits a
-       machine-parseable routing-decision provenance record for each call.
-
-Budget enforcement and policy-based routing exist as broad concepts in
-other AI gateway products. The pending claims above are directed to the
-specific compositions and orderings described, not to the general ideas.
-
-The Apache 2.0 patent grant (Section 3) applies to Contributions to this
-repository. The pending patent rights described above are separate from
-the Apache 2.0 grant and are not granted to non-contributors.
-
-For the avoidance of doubt, the in-source `[Patent N, Claim M]` comments
-throughout this repository identify implementation regions that may
-correspond to claims of the pending applications referenced above. The
-specific claim language, numerical thresholds, parameter values, and
-compositions of those claims are set forth in the filings of record with
-the United States Patent and Trademark Office and are not reproduced
-here.
 
 ---
 
