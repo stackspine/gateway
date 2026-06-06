@@ -1,0 +1,29 @@
+# CODEOWNERS for stackspine/gateway (public OSS repo)
+#
+# Every PR requires review by the listed owners. Sensitive areas
+# (enforcement core, schema, release pipeline) require maintainer review.
+
+# Default — any change in the repo
+*                                   @stackspine/gateway-maintainers
+
+# Enforcement data plane — strict review
+/gateway/_shared/                   @stackspine/gateway-maintainers @stackspine/security
+/gateway/index.ts                   @stackspine/gateway-maintainers @stackspine/security
+
+# Database schema
+/migrations/                        @stackspine/gateway-maintainers @stackspine/security
+
+# Release + CI pipeline
+/.github/workflows/                 @stackspine/gateway-maintainers
+/scripts/scan-disclosure.sh         @stackspine/gateway-maintainers @stackspine/security
+/RELEASING.md                       @stackspine/gateway-maintainers
+
+# SDKs — language owners
+/sdks/js/                           @stackspine/sdk-js
+/sdks/python/                       @stackspine/sdk-python
+/sdks/go/                           @stackspine/sdk-go
+/sdks/ruby/                         @stackspine/sdk-ruby
+/sdks/rust/                         @stackspine/sdk-rust
+
+# Security policy
+/SECURITY.md                        @stackspine/security
