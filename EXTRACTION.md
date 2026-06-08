@@ -18,14 +18,54 @@ so:
 
 ---
 
+## TL;DR — copy-paste checklist
+
+For routine republishes, the entire flow is wrapped by
+`scripts/publish-public-repo.sh`. Run it from the monorepo root after you've
+authenticated with GitHub:
+
+```bash
+# one-time tooling
+brew install gh git-filter-repo            # or: pipx install git-filter-repo
+gh auth login --scopes repo,workflow       # browser flow; pick SSH for git ops
+gh auth status                             # should report "Logged in to github.com"
+
+# one-time SSH key on the GitHub account (skip if already done)
+ssh-keygen -t ed25519 -C "you@example.com"
+gh ssh-key add ~/.ssh/id_ed25519.pub --title "stackspine-publish"
+
+# every publish
+./gateway-oss/scripts/publish-public-repo.sh                 # dry run? add --dry-run
+# custom owner/name? add: --repo my-org/my-fork
+```
+
+The script:
+
+1. Verifies `git`, `gh`, and `git-filter-repo` are installed and `gh` is
+   authenticated.
+2. Runs `scripts/preflight-extract.sh` (guard + fixtures + historical audit).
+3. Clones the monorepo into a throwaway tmp dir.
+4. Runs `git filter-repo` (subdirectory + path scrub + token scrub + mailmap).
+5. Runs `guard.sh` on the rewritten worktree.
+6. Creates `stackspine/gateway` if it doesn't exist (`gh repo create --public`).
+7. Pushes (`--force-with-lease` on republish).
+8. Dispatches the `Verify Public Tree` workflow on the public repo.
+
+If the script aborts, fix the cause in the monorepo, commit, and rerun. The
+manual phase-by-phase procedure below is the reference for what the wrapper
+does.
+
+---
+
 ## Prerequisites
 
 - `git` ≥ 2.30
 - `git-filter-repo` installed and on `PATH`
   (`pipx install git-filter-repo` or `brew install git-filter-repo`)
-- Push access to an **empty** `github.com/stackspine/gateway` repo
-  (create it on GitHub first, do **not** initialize with README/license)
-- `gh` CLI authenticated (optional, used for release publishing)
+- `gh` CLI installed and authenticated with `repo` + `workflow` scopes
+  (`gh auth login --scopes repo,workflow`)
+- SSH key registered with your GitHub account (or use `https` URLs and a PAT)
+- Permission to create repos in the `stackspine` org (or pass `--repo <fork>`)
 
 ---
 
@@ -56,8 +96,8 @@ cd /tmp/stackspine-extract
 # Stash the filter config from the monorepo BEFORE we rewrite history,
 # because step 1 will move the repo root.
 cp -R gateway-oss/.git-filter-repo /tmp/ssx-filter-config
-cp gateway-oss/scripts/guard.sh /tmp/ssx-guard.sh
-cp gateway-oss/scripts/run-guard-fixtures.sh /tmp/ssx-fixtures.sh
+cp gateway-oss/scripts/guard.sh /tmp/ssx-filter-config/guard.sh
+cp gateway-oss/scripts/run-guard-fixtures.sh /tmp/ssx-filter-config/run-guard-fixtures.sh
 
 # 1. Keep ONLY gateway-oss/ history; promote it to repo root.
 git filter-repo \
@@ -76,8 +116,7 @@ git filter-repo --force \
 git filter-repo --force --mailmap /tmp/ssx-filter-config/mailmap
 
 # 5. Final guard pass on the rewritten worktree.
-bash /tmp/ssx-guard.sh .
-bash /tmp/ssx-fixtures.sh
+bash /tmp/ssx-filter-config/guard.sh .
 ```
 
 If any step exits non-zero, **stop**. Diagnose, update the relevant config
@@ -85,23 +124,34 @@ file back in the monorepo, commit, and restart Phase 2 from a fresh clone.
 
 ---
 
-## Phase 3 — Push to the public repo
+## Phase 3 — Create and push to the public repo
 
 ```bash
+# Create the empty public repo (skip if it already exists)
+gh repo create stackspine/gateway --public \
+  --disable-wiki \
+  --description "StackSpine Gateway — open-source AI control plane"
+
+# Push the rewritten tree
 git remote add origin git@github.com:stackspine/gateway.git
-git push -u origin main
+git push -u origin HEAD:main
 git push origin --tags
+
+# Republishing? Force-push with lease instead:
+# git push --force-with-lease -u origin HEAD:main
+# git push --force-with-lease origin --tags
 ```
 
-On GitHub:
+Then, on GitHub:
 
 1. Repo settings → **Branches** → require PRs + status checks on `main`
-   (`public-repo-guard`, `guard-fixtures`, `ci`, `release-notes-dry-run`).
+   (`public-repo-guard`, `guard-fixtures`, `verify-public-tree`, `ci`,
+   `release-notes-dry-run`).
 2. **Security** → enable Dependabot alerts, secret scanning, push protection,
    CodeQL.
 3. Add release secrets only if needed (`DOCKERHUB_TOKEN`, `HELM_REPO_TOKEN`).
-4. Cut `v0.1.0` — the existing `.github/workflows/release.yml` will run
-   `scripts/release-notes.sh` and publish Docker/Helm artifacts.
+4. Cut `v0.1.0` — `.github/workflows/release.yml` runs `release-notes.sh` and
+   publishes Docker/Helm artifacts.
 
 ---
 
@@ -110,9 +160,10 @@ On GitHub:
 The public repo is treated as a **one-way mirror**. To publish a new version:
 
 1. Land changes in the monorepo's `gateway-oss/` directory as usual.
-2. Re-run Phase 1 → Phase 2 → Phase 3 from scratch in a fresh clone.
-3. Force-push to `main` if history was rewritten differently
-   (`git push --force-with-lease`). Tag releases monotonically.
+2. Re-run `./gateway-oss/scripts/publish-public-repo.sh` (or Phase 1 → 2 → 3
+   manually) from a fresh clone.
+3. Tag releases monotonically. The wrapper script force-pushes with lease
+   when the public repo already exists.
 
 Until automated mirroring is in place, this is intentionally manual so each
 publication is reviewed.
@@ -121,9 +172,17 @@ publication is reviewed.
 
 ## Troubleshooting
 
+- **`gh: not authenticated`** — run `gh auth login --scopes repo,workflow`
+  and re-check with `gh auth status`.
+- **`gh repo create: name already exists`** — the repo exists; the wrapper
+  script handles this automatically. For the manual path, skip `gh repo
+  create` and use `git push --force-with-lease`.
+- **`Permission denied (publickey)` on push** — register your SSH key with
+  `gh ssh-key add ~/.ssh/id_ed25519.pub`, or switch the remote to
+  `https://github.com/stackspine/gateway.git` and let `gh auth` provide the
+  credential.
 - **`git-filter-repo: error: cannot use --force ... not a fresh clone`** —
-  re-clone with `git clone --no-local` and retry. filter-repo refuses to run
-  on a repo with reflogs/stash from prior work.
+  re-clone with `git clone --no-local` and retry.
 - **Guard fails on rewritten tree but not on HEAD** — a historical commit
   introduced a disallowed path; add the path to
   `.git-filter-repo/paths-to-remove.txt` and restart.

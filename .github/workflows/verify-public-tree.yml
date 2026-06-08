@@ -1,0 +1,57 @@
+name: Verify Public Tree
+
+# Runs INSIDE the public stackspine/gateway repo (and inside the monorepo
+# against the gateway-oss/ subtree). Clones a fresh copy of HEAD and asserts
+# scripts/guard.sh exits clean — catches any disallowed path or credential
+# pattern that slipped through filter-repo or a direct commit.
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  verify:
+    name: Guard rewritten public tree
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout (full history)
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Resolve OSS root
+        id: root
+        run: |
+          if [ -d gateway-oss ]; then
+            echo "root=gateway-oss" >> "$GITHUB_OUTPUT"
+          else
+            echo "root=." >> "$GITHUB_OUTPUT"
+          fi
+
+      - name: Make guard.sh executable
+        run: |
+          chmod +x ${{ steps.root.outputs.root }}/scripts/guard.sh
+          chmod +x ${{ steps.root.outputs.root }}/scripts/run-guard-fixtures.sh
+
+      - name: Run guard.sh on the public tree
+        run: bash ${{ steps.root.outputs.root }}/scripts/guard.sh ${{ steps.root.outputs.root }}
+
+      - name: Replay fixture suite
+        run: bash ${{ steps.root.outputs.root }}/scripts/run-guard-fixtures.sh
+
+      - name: Assert required public-repo files exist
+        run: |
+          ROOT="${{ steps.root.outputs.root }}"
+          for f in README.md LICENSE CONTRIBUTING.md SECURITY.md CODEOWNERS; do
+            if [ ! -f "${ROOT}/${f}" ]; then
+              echo "❌ missing required public-repo file: ${f}"
+              exit 1
+            fi
+          done
+          echo "✅ all required public-repo files present"
