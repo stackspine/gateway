@@ -92,6 +92,17 @@ say "Rewriting history (subdirectory + path/secret scrubs)"
 say "Guard pass on rewritten worktree"
 run "bash '${CONFIG_STASH}/guard.sh' '${WORKDIR}'"
 
+# Stop here when caller only wants the extracted tree (used by publish-safe.sh
+# to run verify-public-tree.sh against the actual rewritten worktree).
+if [[ "${EXTRACT_ONLY}" -eq 1 ]]; then
+  say "Extract-only complete"
+  # Machine-readable line for orchestrators:
+  echo "EXTRACTED_WORKDIR=${WORKDIR}"
+  echo "Run: bash '${OSS_ROOT}/scripts/verify-public-tree.sh' '${WORKDIR}'"
+  exit 0
+fi
+
+
 # ---------- 6. Ensure public repo exists ----------
 say "Ensuring ${REPO_SLUG} exists on GitHub"
 if [[ "${DRY_RUN}" -eq 1 ]]; then
