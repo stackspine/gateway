@@ -37,11 +37,13 @@ for p in "${DISALLOWED[@]}"; do
   fi
 done
 
-# Control-plane imports.
+# Control-plane imports. Skip the fixture library — its fail/* cases are
+# deliberately positive examples used by run-guard-fixtures.sh.
 if grep -rEn \
     -e 'from ["'"'"']@/(pages|components|contexts|hooks|integrations/supabase)' \
     -e 'supabase/functions/(invoke|write-audit-log|optimize-route-weights|cost-optimizer)' \
     --include='*.ts' --include='*.tsx' --include='*.js' \
+    --exclude-dir='public-repo-guard' \
     "${ROOT}" 2>/dev/null; then
   echo "❌ control-plane import detected"
   FAIL=1
