@@ -1,7 +1,7 @@
 <p align="center">
   <h1 align="center">StackSpine Gateway</h1>
   <p align="center">
-    Open-source AI control plane — multi-provider routing, budget enforcement, and compliance guardrails.
+    The open-source data plane of the <strong>StackSpine control plane</strong> for AI — task-level routing, budget enforcement, and compliance guardrails.
   </p>
 </p>
 
@@ -9,7 +9,7 @@
   <a href="#quick-start">Quick Start</a> ·
   <a href="#features">Features</a> ·
   <a href="#sdks">SDKs</a> ·
-  <a href="https://stackspine.com">Managed Cloud</a> ·
+  <a href="https://stackspine.com">StackSpine Cloud</a> ·
   <a href="CONTRIBUTING.md">Contributing</a>
 </p>
 
@@ -17,30 +17,42 @@
 > This source is extracted from the StackSpine monorepo via
 > [`EXTRACTION.md`](EXTRACTION.md); history is rewritten on each publish.
 
+> **Naming:** the product (and this repository) is **StackSpine Gateway** —
+> the OSS data plane. The broader system, including dashboards, governance,
+> and self-optimizing routing on StackSpine Cloud, is the **StackSpine
+> control plane**. Use "control plane" in user-facing copy; "gateway" refers
+> only to this OSS component.
+
 ---
 
 ## What is StackSpine Gateway?
 
-StackSpine Gateway is a **task-level AI control plane** that sits between your application and AI providers. Instead of calling OpenAI/Anthropic/Google directly, you define **tasks** (like `summarize-ticket` or `chat-support`) and StackSpine routes each request to the optimal model based on cost, latency, compliance rules, and provider health.
+StackSpine Gateway is the open-source data plane of the **StackSpine control
+plane** for AI. It sits between your application and AI providers: instead of
+calling OpenAI/Anthropic/Google directly, you define **tasks** (like
+`summarize-ticket` or `chat-support`) and the control plane routes each
+request to the optimal model based on cost, latency, compliance rules, and
+provider health.
 
 ```
 ┌─────────────────┐     ┌──────────────────────────┐     ┌────────────────────┐
 │   Your App      │────▶│  StackSpine Gateway      │────▶│  100+ providers    │
-│                 │     │                          │     │  • OpenAI / Azure  │
-│  POST /v1/tasks │     │  • Route selection       │     │  • Anthropic       │
-│  /chat/run      │     │  • Budget enforcement    │     │  • Google / Vertex │
-│                 │     │  • Compliance scanning   │     │  • AWS Bedrock     │
-│                 │     │  • Circuit breakers      │     │  • Groq / Cerebras │
-│                 │     │  • Cost optimization     │     │  • Together / Fire │
-└─────────────────┘     │  • Multi-modality        │     │  • Ollama / vLLM   │
-                        │    (chat · embeddings ·  │     │  • Voyage / Jina   │
-                        │     image · voice ·      │     │  • ElevenLabs      │
-                        │     search)              │     │  • Stability / Fal │
-                        └──────────────────────────┘     │  • Tavily / Exa    │
-                                     │                   │  • + 90 more…      │
-                              ┌──────▼───────┐           └────────────────────┘
+│                 │     │  (OSS data plane of the  │     │  • OpenAI / Azure  │
+│  POST /v1/tasks │     │   StackSpine control     │     │  • Anthropic       │
+│  /chat/run      │     │   plane)                 │     │  • Google / Vertex │
+│                 │     │  • Route selection       │     │  • AWS Bedrock     │
+│                 │     │  • Budget enforcement    │     │  • Groq / Cerebras │
+└─────────────────┘     │  • Compliance scanning   │     │  • Together / Fire │
+                        │  • Circuit breakers      │     │  • Ollama / vLLM   │
+                        │  • Cost optimization     │     │  • Voyage / Jina   │
+                        │  • Multi-modality        │     │  • ElevenLabs      │
+                        │    (chat · embeddings ·  │     │  • Stability / Fal │
+                        │     image · voice ·      │     │  • Tavily / Exa    │
+                        │     search)              │     │  • + 90 more…      │
+                        └──────────────────────────┘     └────────────────────┘
+                                     │
+                              ┌──────▼───────┐
                               │  PostgreSQL  │
-                              │  (Supabase)  │
                               └──────────────┘
 ```
 
