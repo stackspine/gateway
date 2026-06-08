@@ -46,15 +46,15 @@ for p in "${DISALLOWED[@]}"; do
   fi
 done
 
-# Control-plane imports. Skip the fixture library when scanning from above it
-# (run-guard-fixtures.sh passes individual fixture dirs as ROOT, so their
-# contents are still scanned correctly there).
-if grep -rEn \
-    -e 'from ["'"'"']@/(pages|components|contexts|hooks|integrations/supabase)' \
-    -e 'supabase/functions/(invoke|write-audit-log|optimize-route-weights|cost-optimizer)' \
-    --include='*.ts' --include='*.tsx' --include='*.js' \
-    --exclude-dir='tests' \
-    "${ROOT}" 2>/dev/null; then
+# Control-plane imports. Exclude fixture tree only when scanning above it.
+CP_ARGS=(-rEn
+  -e 'from ["'"'"']@/(pages|components|contexts|hooks|integrations/supabase)'
+  -e 'supabase/functions/(invoke|write-audit-log|optimize-route-weights|cost-optimizer)'
+  --include='*.ts' --include='*.tsx' --include='*.js')
+if [[ "${EXCLUDE_FIXTURES}" -eq 1 ]]; then
+  CP_ARGS+=(--exclude-dir='public-repo-guard')
+fi
+if grep "${CP_ARGS[@]}" "${ROOT}" 2>/dev/null; then
   echo "❌ control-plane import detected"
   FAIL=1
 fi
@@ -74,28 +74,32 @@ PATTERNS=(
 RG="$(command -v rg || true)"
 for pat in "${PATTERNS[@]}"; do
   if [[ -n "${RG}" ]]; then
-    if "${RG}" -n --hidden \
-         -g '!**/node_modules/**' \
-         -g '!**/guard.sh' \
-         -g '!**/run-guard-fixtures.sh' \
-         -g '!**/public-repo-guard.yml' \
-         -g '!**/scan-disclosure.sh' \
-         -g '!**/tests/fixtures/public-repo-guard/**' \
-         -g '!**/.git-filter-repo/**' \
-         -e "${pat}" "${ROOT}" >/dev/null; then
+    RG_ARGS=(-n --hidden
+      -g '!**/node_modules/**'
+      -g '!**/guard.sh'
+      -g '!**/run-guard-fixtures.sh'
+      -g '!**/public-repo-guard.yml'
+      -g '!**/scan-disclosure.sh'
+      -g '!**/.git-filter-repo/**')
+    if [[ "${EXCLUDE_FIXTURES}" -eq 1 ]]; then
+      RG_ARGS+=(-g '!**/tests/fixtures/public-repo-guard/**')
+    fi
+    if "${RG}" "${RG_ARGS[@]}" -e "${pat}" "${ROOT}" >/dev/null; then
       echo "❌ credential pattern matched: ${pat}"
       FAIL=1
     fi
   else
-    if grep -rEn --binary-files=without-match \
-         --exclude-dir=node_modules \
-         --exclude-dir=tests \
-         --exclude-dir=.git-filter-repo \
-         --exclude='guard.sh' \
-         --exclude='run-guard-fixtures.sh' \
-         --exclude='public-repo-guard.yml' \
-         --exclude='scan-disclosure.sh' \
-         -e "${pat}" "${ROOT}" >/dev/null 2>&1; then
+    GREP_ARGS=(-rEn --binary-files=without-match
+      --exclude-dir=node_modules
+      --exclude-dir=.git-filter-repo
+      --exclude='guard.sh'
+      --exclude='run-guard-fixtures.sh'
+      --exclude='public-repo-guard.yml'
+      --exclude='scan-disclosure.sh')
+    if [[ "${EXCLUDE_FIXTURES}" -eq 1 ]]; then
+      GREP_ARGS+=(--exclude-dir='public-repo-guard')
+    fi
+    if grep "${GREP_ARGS[@]}" -e "${pat}" "${ROOT}" >/dev/null 2>&1; then
       echo "❌ credential pattern matched: ${pat}"
       FAIL=1
     fi
