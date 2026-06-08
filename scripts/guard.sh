@@ -80,7 +80,7 @@ for pat in "${PATTERNS[@]}"; do
   else
     if grep -rEn --binary-files=without-match \
          --exclude-dir=node_modules \
-         --exclude-dir=public-repo-guard \
+         --exclude-dir=tests \
          --exclude-dir=.git-filter-repo \
          --exclude='guard.sh' \
          --exclude='run-guard-fixtures.sh' \
