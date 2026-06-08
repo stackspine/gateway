@@ -12,6 +12,15 @@ set -uo pipefail
 
 ROOT="${1:-.}"
 
+# Only exclude the fixture library when ROOT is *above* it. When ROOT IS a
+# fixture (run-guard-fixtures.sh passes fixture dirs directly), we must scan
+# everything so fail/* cases actually trip.
+if [[ -d "${ROOT}/tests/fixtures/public-repo-guard" ]]; then
+  EXCLUDE_FIXTURES=1
+else
+  EXCLUDE_FIXTURES=0
+fi
+
 DISALLOWED=(
   "src"
   "supabase/functions"
