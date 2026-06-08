@@ -13,6 +13,10 @@
   <a href="CONTRIBUTING.md">Contributing</a>
 </p>
 
+> **Canonical public repo:** [`github.com/stackspine/gateway`](https://github.com/stackspine/gateway).
+> This source is extracted from the StackSpine monorepo via
+> [`EXTRACTION.md`](EXTRACTION.md); history is rewritten on each publish.
+
 ---
 
 ## What is StackSpine Gateway?
