@@ -115,9 +115,60 @@ say "Pushing to ${REPO_SLUG}"
 )
 
 # ---------- 8. Trigger verify workflow (best-effort) ----------
-if gh workflow list -R "${REPO_SLUG}" 2>/dev/null | grep -q "Verify Public Tree"; then
+if [[ "${DRY_RUN}" -eq 0 ]] && gh workflow list -R "${REPO_SLUG}" 2>/dev/null | grep -q "Verify Public Tree"; then
   say "Dispatching Verify Public Tree workflow"
   run "gh workflow run 'Verify Public Tree' -R '${REPO_SLUG}'"
+fi
+
+# ---------- 9. Dry-run summary ----------
+if [[ "${DRY_RUN}" -eq 1 ]]; then
+  echo
+  say "DRY RUN SUMMARY — nothing was sent to GitHub"
+
+  echo
+  echo "  Exact GitHub commands that WOULD run:"
+  echo "    gh repo create ${REPO_SLUG} --public --disable-wiki \\"
+  echo "        --description 'StackSpine Gateway — open-source AI control plane'"
+  echo "    git -C <workdir> remote add origin git@github.com:${REPO_SLUG}.git"
+  echo "    git -C <workdir> push -u origin HEAD:${DEFAULT_BRANCH}"
+  echo "      # (re-publish:  git push --force-with-lease -u origin HEAD:${DEFAULT_BRANCH})"
+  echo "    git -C <workdir> push origin --tags --force-with-lease"
+  echo "    gh workflow run 'Verify Public Tree' -R ${REPO_SLUG}"
+
+  echo
+  echo "  Expected top-level file set on ${REPO_SLUG} after publish:"
+  # Compute: current gateway-oss/ top-level entries MINUS anything matched by
+  # the deny list (best-effort prefix match against paths-to-remove.txt).
+  DENY_FILE="${OSS_ROOT}/.git-filter-repo/paths-to-remove.txt"
+  while IFS= read -r entry; do
+    name="$(basename "${entry}")"
+    # Skip hidden dirs we don't want to advertise except .github.
+    case "${name}" in
+      .git|.git-filter-repo) continue ;;
+    esac
+    skip=0
+    if [[ -f "${DENY_FILE}" ]]; then
+      while IFS= read -r rule; do
+        [[ -z "${rule}" || "${rule}" =~ ^# ]] && continue
+        rule="${rule#glob:}"
+        # Compare on the top-level name only.
+        top="${rule%%/*}"
+        if [[ "${top}" == "${name}" || "${rule}" == "${name}" ]]; then
+          skip=1; break
+        fi
+      done < "${DENY_FILE}"
+    fi
+    [[ "${skip}" -eq 1 ]] && continue
+    if [[ -d "${entry}" ]]; then
+      echo "    ${name}/"
+    else
+      echo "    ${name}"
+    fi
+  done < <(find "${OSS_ROOT}" -mindepth 1 -maxdepth 1 | sort)
+
+  echo
+  echo "  Re-run without --dry-run to publish."
+  exit 0
 fi
 
 say "Done. Public repo: https://github.com/${REPO_SLUG}"
