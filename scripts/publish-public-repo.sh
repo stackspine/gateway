@@ -92,7 +92,10 @@ run "bash '${CONFIG_STASH}/guard.sh' '${WORKDIR}'"
 
 # ---------- 6. Ensure public repo exists ----------
 say "Ensuring ${REPO_SLUG} exists on GitHub"
-if gh repo view "${REPO_SLUG}" >/dev/null 2>&1; then
+if [[ "${DRY_RUN}" -eq 1 ]]; then
+  echo "  [dry-run] skipping gh repo view ${REPO_SLUG}"
+  EXISTS=0
+elif gh repo view "${REPO_SLUG}" >/dev/null 2>&1; then
   echo "  repo already exists — will force-push with lease."
   EXISTS=1
 else
