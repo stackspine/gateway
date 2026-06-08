@@ -6,6 +6,14 @@
 </p>
 
 <p align="center">
+  <a href="https://github.com/stackspine/gateway"><img alt="Public repo" src="https://img.shields.io/badge/repo-stackspine%2Fgateway-22D3EE?logo=github&logoColor=white"></a>
+  <a href="https://github.com/stackspine/gateway/releases/latest"><img alt="Latest release" src="https://img.shields.io/github/v/release/stackspine/gateway?color=A78BFA&label=release"></a>
+  <a href="https://github.com/stackspine/gateway/actions/workflows/verify-public-tree.yml"><img alt="Verify Public Tree" src="https://img.shields.io/github/actions/workflow/status/stackspine/gateway/verify-public-tree.yml?branch=main&label=verify%20public%20tree"></a>
+  <a href="LICENSE"><img alt="License" src="https://img.shields.io/badge/license-Apache%202.0-blue"></a>
+  <a href="https://stackspine.com"><img alt="StackSpine Cloud" src="https://img.shields.io/badge/managed-StackSpine%20Cloud-0a0a0b"></a>
+</p>
+
+<p align="center">
   <a href="#quick-start">Quick Start</a> ·
   <a href="#features">Features</a> ·
   <a href="#sdks">SDKs</a> ·
@@ -13,7 +21,7 @@
   <a href="CONTRIBUTING.md">Contributing</a>
 </p>
 
-> **Canonical public repo:** [`github.com/stackspine/gateway`](https://github.com/stackspine/gateway).
+> **Canonical public repo:** [`github.com/stackspine/gateway`](https://github.com/stackspine/gateway) — clone or star there.
 > This source is extracted from the StackSpine monorepo via
 > [`EXTRACTION.md`](EXTRACTION.md); history is rewritten on each publish.
 
