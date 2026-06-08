@@ -20,6 +20,8 @@ so:
 
 ## TL;DR — copy-paste checklist
 
+Target public repo: **`https://github.com/stackspine/gateway`**
+
 For routine republishes, the entire flow is wrapped by
 `scripts/publish-public-repo.sh`. Run it from the monorepo root after you've
 authenticated with GitHub:
