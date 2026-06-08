@@ -20,12 +20,14 @@ set -euo pipefail
 
 REPO_SLUG="stackspine/gateway"
 DRY_RUN=0
+EXTRACT_ONLY=0
 DEFAULT_BRANCH="main"
 
 while [[ $# -gt 0 ]]; do
   case "$1" in
     --repo) REPO_SLUG="$2"; shift 2 ;;
     --dry-run) DRY_RUN=1; shift ;;
+    --extract-only) EXTRACT_ONLY=1; shift ;;
     -h|--help)
       sed -n '2,18p' "$0"; exit 0 ;;
     *) echo "unknown arg: $1" >&2; exit 2 ;;
@@ -89,6 +91,17 @@ say "Rewriting history (subdirectory + path/secret scrubs)"
 # ---------- 5. Final guard pass on rewritten worktree ----------
 say "Guard pass on rewritten worktree"
 run "bash '${CONFIG_STASH}/guard.sh' '${WORKDIR}'"
+
+# Stop here when caller only wants the extracted tree (used by publish-safe.sh
+# to run verify-public-tree.sh against the actual rewritten worktree).
+if [[ "${EXTRACT_ONLY}" -eq 1 ]]; then
+  say "Extract-only complete"
+  # Machine-readable line for orchestrators:
+  echo "EXTRACTED_WORKDIR=${WORKDIR}"
+  echo "Run: bash '${OSS_ROOT}/scripts/verify-public-tree.sh' '${WORKDIR}'"
+  exit 0
+fi
+
 
 # ---------- 6. Ensure public repo exists ----------
 say "Ensuring ${REPO_SLUG} exists on GitHub"
