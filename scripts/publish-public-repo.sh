@@ -20,12 +20,14 @@ set -euo pipefail
 
 REPO_SLUG="stackspine/gateway"
 DRY_RUN=0
+EXTRACT_ONLY=0
 DEFAULT_BRANCH="main"
 
 while [[ $# -gt 0 ]]; do
   case "$1" in
     --repo) REPO_SLUG="$2"; shift 2 ;;
     --dry-run) DRY_RUN=1; shift ;;
+    --extract-only) EXTRACT_ONLY=1; shift ;;
     -h|--help)
       sed -n '2,18p' "$0"; exit 0 ;;
     *) echo "unknown arg: $1" >&2; exit 2 ;;
