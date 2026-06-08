@@ -1,0 +1,26 @@
+***REMOVED***
+REPLACEMENT==>REPLACEMENT
+***REMOVED***
+***REMOVED***
+
+***REMOVED***
+***REMOVED***
+regex:-----BEGIN (RSA|EC|OPENSSH|PGP|DSA) PRIVATE KEY-----==>***REDACTED-PRIVATE-KEY-HEADER***
+regex:-----END (RSA|EC|OPENSSH|PGP|DSA) PRIVATE KEY-----==>***REDACTED-PRIVATE-KEY-FOOTER***
+
+***REMOVED***
+regex:AKIA[0-9A-Z]{16}==>***REDACTED-AWS-ACCESS-KEY***
+regex:AIza[0-9A-Za-z_-]{35}==>***REDACTED-GOOGLE-API-KEY***
+regex:sk-ant-[A-Za-z0-9_-]{20,}==>***REDACTED-ANTHROPIC-KEY***
+regex:sk-[A-Za-z0-9]{32,}==>***REDACTED-OPENAI-KEY***
+
+***REMOVED***
+regex:gh[ousr]_[A-Za-z0-9]{30,}==>***REDACTED-GITHUB-TOKEN***
+regex:xox[baprs]-[A-Za-z0-9-]{10,}==>***REDACTED-SLACK-TOKEN***
+
+***REMOVED***
+regex:eyJhbGciOi[A-Za-z0-9_-]+\.eyJ[A-Za-z0-9_-]+\.[A-Za-z0-9_-]+==>***REDACTED-JWT***
+
+***REMOVED***
+regex:sk_live_[A-Za-z0-9]{20,}==>***REDACTED-STRIPE-LIVE-KEY***
+regex:rk_live_[A-Za-z0-9]{20,}==>***REDACTED-STRIPE-RESTRICTED-KEY***

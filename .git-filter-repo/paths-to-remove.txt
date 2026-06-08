@@ -1,0 +1,46 @@
+# Paths to scrub from rewritten gateway-oss history.
+# Fed to: git filter-repo --invert-paths --paths-from-file
+# Format: one path/glob per line. After --subdirectory-filter gateway-oss,
+# repo root == gateway-oss/, so paths here are relative to that.
+#
+# Anything that *was* under gateway-oss/ historically but is disallowed today
+# (per scripts/guard.sh) MUST appear here so it is purged from history, not
+# just from HEAD.
+
+# --- Control-plane source (must never appear) ---
+src
+glob:src/**
+
+# --- Backend / infra never shipped in OSS ---
+supabase
+glob:supabase/**
+
+# --- Mobile shells ---
+android
+glob:android/**
+ios
+glob:ios/**
+capacitor.config.ts
+capacitor.config.json
+
+# --- Commercial SDK packages (kept private) ---
+glob:packages/sdk-js/**
+glob:packages/sdk-python/**
+glob:packages/sdk-go/**
+glob:packages/sdk-ruby/**
+glob:packages/sdk-rust/**
+
+# --- Internal IP docs ---
+glob:docs/internal-ip/**
+
+# --- Local env files (never publish) ---
+.env
+.env.local
+.env.development
+.env.production
+glob:**/.env
+glob:**/.env.*
+
+# --- Misc local-only artifacts ---
+.lovable
+glob:.lovable/**

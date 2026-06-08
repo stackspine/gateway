@@ -1,0 +1,14 @@
+# git-filter-repo mailmap for the public gateway-oss extraction.
+#
+# Format (standard gitmailmap(5)):
+#   Proper Name <proper@email>     Commit Name <commit@email>
+#
+# Use this to rewrite internal author/committer identities into public-safe
+# forms before pushing to github.com/stackspine/gateway. Add one line per
+# contributor whose internal email should be hidden.
+#
+# Example:
+#   Jane Doe <jane@stackspine.com>     Jane Doe <jane@internal.local>
+#   StackSpine Bot <bots@stackspine.com>  lovable-agent <agent@lovable.dev>
+#
+# Leaving this file with only comments is safe — filter-repo will no-op.
