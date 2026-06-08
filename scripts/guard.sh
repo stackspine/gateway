@@ -70,6 +70,8 @@ for pat in "${PATTERNS[@]}"; do
          -g '!**/run-guard-fixtures.sh' \
          -g '!**/public-repo-guard.yml' \
          -g '!**/scan-disclosure.sh' \
+         -g '!**/tests/fixtures/public-repo-guard/**' \
+         -g '!**/.git-filter-repo/**' \
          -e "${pat}" "${ROOT}" >/dev/null; then
       echo "❌ credential pattern matched: ${pat}"
       FAIL=1
@@ -77,6 +79,8 @@ for pat in "${PATTERNS[@]}"; do
   else
     if grep -rEn --binary-files=without-match \
          --exclude-dir=node_modules \
+         --exclude-dir=public-repo-guard \
+         --exclude-dir=.git-filter-repo \
          --exclude='guard.sh' \
          --exclude='run-guard-fixtures.sh' \
          --exclude='public-repo-guard.yml' \
