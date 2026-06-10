@@ -125,12 +125,15 @@ say "Pushing to ${REPO_SLUG}"
 (
   cd "${WORKDIR}"
   run "git remote add origin 'https://github.com/${REPO_SLUG}.git' 2>/dev/null || git remote set-url origin 'https://github.com/${REPO_SLUG}.git'"
-  if [[ "${EXISTS}" -eq 1 ]]; then
-    run "git push --force-with-lease -u origin HEAD:${DEFAULT_BRANCH}"
-  else
-    run "git push -u origin HEAD:${DEFAULT_BRANCH}"
+
+  # One-way mirror: history is rewritten every publish, so a lease is
+  # meaningless — this script is the sole writer to the public repo.
+  run "git push --force -u origin HEAD:${DEFAULT_BRANCH}"
+
+  # Tags: only push if we have local tags.
+  if git for-each-ref --format='%(refname)' refs/tags | grep -q .; then
+    run "git push origin --tags --force || true"
   fi
-  run "git push origin --tags --force-with-lease"
 )
 
 # ---------- 8. Trigger verify workflow (best-effort) ----------
@@ -150,9 +153,8 @@ if [[ "${DRY_RUN}" -eq 1 ]]; then
   echo "        --description 'StackSpine Gateway — open-source AI control plane'"
   echo "    gh auth setup-git"
   echo "    git -C <workdir> remote add origin https://github.com/${REPO_SLUG}.git"
-  echo "    git -C <workdir> push -u origin HEAD:${DEFAULT_BRANCH}"
-  echo "      # (re-publish:  git push --force-with-lease -u origin HEAD:${DEFAULT_BRANCH})"
-  echo "    git -C <workdir> push origin --tags --force-with-lease"
+  echo "    git -C <workdir> push --force -u origin HEAD:${DEFAULT_BRANCH}"
+  echo "    git -C <workdir> push origin --tags --force"
   echo "    gh workflow run 'Verify Public Tree' -R ${REPO_SLUG}"
 
   echo

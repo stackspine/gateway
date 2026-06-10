@@ -132,7 +132,7 @@ Deno.test("E2E: Invalid API key returns 401", async () => {
         messages: [{ role: "user", content: "hello" }],
       }),
     });
-    const body = await response.text();
+    const _body = await response.text();
     assertEquals(response.status, 401);
     assertEquals(response.headers.get("X-API-Version"), "1");
   } finally {
