@@ -9,20 +9,8 @@ name: Public-Repo-Guard Fixtures
 on:
   push:
     branches: [main]
-    paths:
-      - "gateway-oss/scripts/guard.sh"
-      - "gateway-oss/scripts/run-guard-fixtures.sh"
-      - "gateway-oss/.github/workflows/public-repo-guard.yml"
-      - "gateway-oss/.github/workflows/guard-fixtures.yml"
-      - "gateway-oss/tests/fixtures/public-repo-guard/**"
   pull_request:
     branches: [main]
-    paths:
-      - "gateway-oss/scripts/guard.sh"
-      - "gateway-oss/scripts/run-guard-fixtures.sh"
-      - "gateway-oss/.github/workflows/public-repo-guard.yml"
-      - "gateway-oss/.github/workflows/guard-fixtures.yml"
-      - "gateway-oss/tests/fixtures/public-repo-guard/**"
 
 permissions:
   contents: read
