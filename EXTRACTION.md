@@ -29,17 +29,18 @@ authenticated with GitHub:
 ```bash
 # one-time tooling
 brew install gh git-filter-repo            # or: pipx install git-filter-repo
-gh auth login --scopes repo,workflow       # browser flow; pick SSH for git ops
+gh auth login --scopes repo,workflow       # browser flow; choose HTTPS
+gh auth setup-git                          # wires git to use gh's credential helper
 gh auth status                             # should report "Logged in to github.com"
-
-# one-time SSH key on the GitHub account (skip if already done)
-ssh-keygen -t ed25519 -C "you@example.com"
-gh ssh-key add ~/.ssh/id_ed25519.pub --title "stackspine-publish"
 
 # every publish
 ./gateway-oss/scripts/publish-public-repo.sh                 # dry run? add --dry-run
 # custom owner/name? add: --repo my-org/my-fork
 ```
+
+> Pushes use **HTTPS** via `gh`'s credential helper — no SSH key required.
+> If you prefer SSH, run `gh auth setup-git` after `gh auth login -p ssh` and
+> swap the remote URL in `publish-public-repo.sh` back to `git@github.com:...`.
 
 The script:
 
