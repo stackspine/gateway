@@ -29,17 +29,18 @@ authenticated with GitHub:
 ```bash
 # one-time tooling
 brew install gh git-filter-repo            # or: pipx install git-filter-repo
-gh auth login --scopes repo,workflow       # browser flow; pick SSH for git ops
+gh auth login --scopes repo,workflow       # browser flow; choose HTTPS
+gh auth setup-git                          # wires git to use gh's credential helper
 gh auth status                             # should report "Logged in to github.com"
-
-# one-time SSH key on the GitHub account (skip if already done)
-ssh-keygen -t ed25519 -C "you@example.com"
-gh ssh-key add ~/.ssh/id_ed25519.pub --title "stackspine-publish"
 
 # every publish
 ./gateway-oss/scripts/publish-public-repo.sh                 # dry run? add --dry-run
 # custom owner/name? add: --repo my-org/my-fork
 ```
+
+> Pushes use **HTTPS** via `gh`'s credential helper — no SSH key required.
+> If you prefer SSH, run `gh auth setup-git` after `gh auth login -p ssh` and
+> swap the remote URL in `publish-public-repo.sh` back to `git@github.com:...`.
 
 The script:
 
@@ -134,8 +135,9 @@ gh repo create stackspine/gateway --public \
   --disable-wiki \
   --description "StackSpine Gateway — open-source AI control plane"
 
-# Push the rewritten tree
-git remote add origin git@github.com:stackspine/gateway.git
+# Push the rewritten tree (HTTPS via gh credential helper — no SSH key needed)
+gh auth setup-git
+git remote add origin https://github.com/stackspine/gateway.git
 git push -u origin HEAD:main
 git push origin --tags
 
@@ -179,10 +181,15 @@ publication is reviewed.
 - **`gh repo create: name already exists`** — the repo exists; the wrapper
   script handles this automatically. For the manual path, skip `gh repo
   create` and use `git push --force-with-lease`.
-- **`Permission denied (publickey)` on push** — register your SSH key with
-  `gh ssh-key add ~/.ssh/id_ed25519.pub`, or switch the remote to
-  `https://github.com/stackspine/gateway.git` and let `gh auth` provide the
-  credential.
+- **`Permission denied (publickey)` on push** — the publish script now uses
+  HTTPS, so this should not happen. If you see it, you're on an old version
+  of the script with an `git@github.com:...` remote — pull latest, or run
+  `gh auth setup-git` and re-set the remote to
+  `https://github.com/stackspine/gateway.git`.
+- **`could not read Username for 'https://github.com'`** — you skipped
+  `gh auth setup-git`. Run it and retry the push.
+- **`403` / token missing `repo` scope** — run
+  `gh auth refresh -s repo,workflow`.
 - **`git-filter-repo: error: cannot use --force ... not a fresh clone`** —
   re-clone with `git clone --no-local` and retry.
 - **Guard fails on rewritten tree but not on HEAD** — a historical commit
