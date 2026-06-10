@@ -126,13 +126,57 @@ say "Pushing to ${REPO_SLUG}"
   cd "${WORKDIR}"
   run "git remote add origin 'https://github.com/${REPO_SLUG}.git' 2>/dev/null || git remote set-url origin 'https://github.com/${REPO_SLUG}.git'"
 
-  # One-way mirror: history is rewritten every publish, so a lease is
-  # meaningless — this script is the sole writer to the public repo.
+  # ---- Pre-push validation ----
+  # Fetch current remote state so we can (a) log the SHA we're about to
+  # overwrite and (b) optionally enforce that the remote matches a caller-
+  # supplied SHA via EXPECTED_REMOTE_SHA. Tolerate empty repo (no refs yet).
+  if [[ "${DRY_RUN}" -eq 0 ]]; then
+    git fetch origin --tags --prune || true
+
+    LOCAL_SHA="$(git rev-parse HEAD)"
+    REMOTE_SHA=""
+    if git rev-parse --verify --quiet "refs/remotes/origin/${DEFAULT_BRANCH}" >/dev/null; then
+      REMOTE_SHA="$(git rev-parse "refs/remotes/origin/${DEFAULT_BRANCH}")"
+    fi
+
+    echo "  local  HEAD                  = ${LOCAL_SHA}"
+    echo "  remote ${DEFAULT_BRANCH} (pre-push)   = ${REMOTE_SHA:-<empty repo>}"
+
+    if [[ -n "${EXPECTED_REMOTE_SHA:-}" ]]; then
+      if [[ "${REMOTE_SHA}" != "${EXPECTED_REMOTE_SHA}" ]]; then
+        echo "ERROR: remote ${DEFAULT_BRANCH} is ${REMOTE_SHA:-<empty>}, expected ${EXPECTED_REMOTE_SHA}." >&2
+        echo "  Aborting force push. Reconcile, or unset EXPECTED_REMOTE_SHA." >&2
+        exit 1
+      fi
+      echo "  pre-push lease OK (remote matches EXPECTED_REMOTE_SHA)."
+    fi
+
+    if [[ -n "${REMOTE_SHA}" && "${REMOTE_SHA}" == "${LOCAL_SHA}" ]]; then
+      echo "  remote already at LOCAL_SHA; push is a no-op."
+    fi
+  fi
+
+  # One-way mirror: history is rewritten every publish, so a server-side
+  # CAS lease is meaningless. The EXPECTED_REMOTE_SHA check above is the
+  # opt-in safety net for callers that want it.
   run "git push --force -u origin HEAD:${DEFAULT_BRANCH}"
 
   # Tags: only push if we have local tags.
   if git for-each-ref --format='%(refname)' refs/tags | grep -q .; then
     run "git push origin --tags --force || true"
+  fi
+
+  # ---- Post-push verification ----
+  if [[ "${DRY_RUN}" -eq 0 ]]; then
+    git fetch origin --prune || true
+    NEW_REMOTE_SHA="$(git rev-parse "refs/remotes/origin/${DEFAULT_BRANCH}" 2>/dev/null || echo "")"
+    LOCAL_SHA="$(git rev-parse HEAD)"
+    echo "  remote ${DEFAULT_BRANCH} (post-push)  = ${NEW_REMOTE_SHA:-<missing>}"
+    if [[ "${NEW_REMOTE_SHA}" != "${LOCAL_SHA}" ]]; then
+      echo "ERROR: post-push remote ${DEFAULT_BRANCH} (${NEW_REMOTE_SHA}) != local HEAD (${LOCAL_SHA})." >&2
+      exit 1
+    fi
+    echo "  post-push verification OK: ${REPO_SLUG}@${DEFAULT_BRANCH} = ${LOCAL_SHA}"
   fi
 )
 
