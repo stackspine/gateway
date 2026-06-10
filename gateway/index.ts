@@ -949,11 +949,11 @@ serve(async (req) => {
 
     // All routes failed
     if (!result?.ok || !usedRoute) {
-      if (orgId) {
-// OSS:         triggerCallFailedWebhook(supabaseUrl, supabaseServiceKey, orgId, {
-          task_key, task_id: taskId, error: lastError, latency_ms: Date.now() - startTime, routes_attempted: sortedRoutes.length,
-        });
-      }
+      // OSS: triggerCallFailedWebhook is part of the managed control plane and is
+      // intentionally stripped from the open-source data plane.
+      void orgId;
+      void taskId;
+      void sortedRoutes;
       return new Response(
         JSON.stringify({ error: "All routes failed", details: lastError }),
         { status: 502, headers: { ...corsHeaders, "Content-Type": "application/json" } }
