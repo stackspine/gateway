@@ -1128,14 +1128,17 @@ serve(async (req) => {
     // Step 9: Webhooks & Budget Alerts
     // ========================================================================
 
-    if (orgId && callLog?.id) {
-// OSS:       triggerCallCompletedWebhook(supabaseUrl, supabaseServiceKey, orgId, {
-        call_id: callLog.id, task_key, task_id: taskId, model: modelProfile.provider_model_name,
-        provider: provider.type, provider_name: provider.name, route_strategy: usedRoute.strategy,
-        was_canary: wasCanary, usage: { input_tokens: inputTokens, output_tokens: outputTokens, total_tokens: totalTokens },
-        cost_usd: totalCost, latency_ms: latencyMs,
-      });
-    }
+    // OSS: triggerCallCompletedWebhook is part of the managed control plane and is
+    // intentionally stripped from the open-source data plane.
+    void callLog;
+    void modelProfile;
+    void provider;
+    void wasCanary;
+    void inputTokens;
+    void outputTokens;
+    void totalTokens;
+    void totalCost;
+    void latencyMs;
 
     if (orgId) checkBudgetAlerts(supabaseUrl, supabaseServiceKey, orgId, taskId, totalCost);
 
