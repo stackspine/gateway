@@ -72,9 +72,24 @@ PATTERNS=(
 )
 
 RG="$(command -v rg || true)"
+
+if [[ "${GUARD_DEBUG:-0}" == "1" ]]; then
+  echo "[guard] ROOT=${ROOT}"
+  echo "[guard] EXCLUDE_FIXTURES=${EXCLUDE_FIXTURES}"
+  if [[ -n "${RG}" ]]; then
+    echo "[guard] scanner=rg ($("${RG}" --version | head -1))"
+  else
+    echo "[guard] scanner=grep ($(grep --version | head -1))"
+  fi
+  echo "[guard] files visible to scan:"
+  find "${ROOT}" -type f -not -path '*/node_modules/*' -not -path '*/.git/*' | sed 's/^/  /' || true
+fi
+
 for pat in "${PATTERNS[@]}"; do
   if [[ -n "${RG}" ]]; then
-    RG_ARGS=(-n --hidden --no-ignore --no-ignore-parent --no-ignore-vcs
+    # -uu = --no-ignore --hidden ; -a treats binary files as text so .pem-style
+    # fixtures (id_rsa) and any UTF-8-edgy leak.txt aren't silently skipped.
+    RG_ARGS=(-n -a -uu
       -g '!**/node_modules/**'
       -g '!**/.git/**'
       -g '!**/guard.sh'
@@ -85,12 +100,23 @@ for pat in "${PATTERNS[@]}"; do
     if [[ "${EXCLUDE_FIXTURES}" -eq 1 ]]; then
       RG_ARGS+=(-g '!**/tests/fixtures/public-repo-guard/**')
     fi
-    if "${RG}" "${RG_ARGS[@]}" -e "${pat}" "${ROOT}" >/dev/null; then
+    "${RG}" "${RG_ARGS[@]}" -e "${pat}" "${ROOT}" >/tmp/.guard-rg.$$ 2>&1
+    rc=$?
+    if [[ "${GUARD_DEBUG:-0}" == "1" ]]; then
+      echo "[guard] rg pattern='${pat}' rc=${rc}"
+      sed 's/^/  /' /tmp/.guard-rg.$$ || true
+    fi
+    if [[ "${rc}" -eq 0 ]]; then
       echo "❌ credential pattern matched: ${pat}"
       FAIL=1
+    elif [[ "${rc}" -ne 1 ]]; then
+      echo "⚠️  rg error (rc=${rc}) for pattern: ${pat}"
+      cat /tmp/.guard-rg.$$ >&2 || true
+      FAIL=1
     fi
+    rm -f /tmp/.guard-rg.$$
   else
-    GREP_ARGS=(-rEnI
+    GREP_ARGS=(-rEn --binary-files=text
       --exclude-dir=node_modules
       --exclude-dir=.git-filter-repo
       --exclude='guard.sh'
@@ -100,10 +126,21 @@ for pat in "${PATTERNS[@]}"; do
     if [[ "${EXCLUDE_FIXTURES}" -eq 1 ]]; then
       GREP_ARGS+=(--exclude-dir='public-repo-guard')
     fi
-    if grep "${GREP_ARGS[@]}" -e "${pat}" "${ROOT}" >/dev/null; then
+    grep "${GREP_ARGS[@]}" -e "${pat}" "${ROOT}" >/tmp/.guard-grep.$$ 2>&1
+    rc=$?
+    if [[ "${GUARD_DEBUG:-0}" == "1" ]]; then
+      echo "[guard] grep pattern='${pat}' rc=${rc}"
+      sed 's/^/  /' /tmp/.guard-grep.$$ || true
+    fi
+    if [[ "${rc}" -eq 0 ]]; then
       echo "❌ credential pattern matched: ${pat}"
       FAIL=1
+    elif [[ "${rc}" -ne 1 ]]; then
+      echo "⚠️  grep error (rc=${rc}) for pattern: ${pat}"
+      cat /tmp/.guard-grep.$$ >&2 || true
+      FAIL=1
     fi
+    rm -f /tmp/.guard-grep.$$
   fi
 done
 
