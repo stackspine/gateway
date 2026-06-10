@@ -79,6 +79,7 @@ jobs:
           set -e
           ROOT="${{ steps.root.outputs.root }}"
           if grep -rEn \
+              --exclude-dir=tests/fixtures/public-repo-guard \
               -e 'from ["'"'"']@/(pages|components|contexts|hooks|integrations/supabase)' \
               -e 'supabase/functions/(invoke|write-audit-log|optimize-route-weights|cost-optimizer)' \
               --include='*.ts' --include='*.tsx' --include='*.js' \
