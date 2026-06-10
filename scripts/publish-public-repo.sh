@@ -125,12 +125,23 @@ say "Pushing to ${REPO_SLUG}"
 (
   cd "${WORKDIR}"
   run "git remote add origin 'https://github.com/${REPO_SLUG}.git' 2>/dev/null || git remote set-url origin 'https://github.com/${REPO_SLUG}.git'"
-  if [[ "${EXISTS}" -eq 1 ]]; then
-    run "git push --force-with-lease -u origin HEAD:${DEFAULT_BRANCH}"
+
+  # Populate refs/remotes/origin/* so --force-with-lease has a real base.
+  # Tolerate empty repo (no refs yet).
+  run "git fetch origin --tags || true"
+
+  if [[ "${EXISTS}" -eq 1 ]] && git rev-parse --verify --quiet "refs/remotes/origin/${DEFAULT_BRANCH}" >/dev/null; then
+    REMOTE_SHA="$(git rev-parse "refs/remotes/origin/${DEFAULT_BRANCH}")"
+    run "git push --force-with-lease=${DEFAULT_BRANCH}:${REMOTE_SHA} -u origin HEAD:${DEFAULT_BRANCH}"
   else
+    # First push, or remote default branch doesn't exist yet — no lease possible.
     run "git push -u origin HEAD:${DEFAULT_BRANCH}"
   fi
-  run "git push origin --tags --force-with-lease"
+
+  # Tags: only push if we have local tags. Plain --force is fine for a one-way mirror.
+  if git for-each-ref --format='%(refname)' refs/tags | grep -q .; then
+    run "git push origin --tags --force || true"
+  fi
 )
 
 # ---------- 8. Trigger verify workflow (best-effort) ----------
