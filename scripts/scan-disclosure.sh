@@ -69,6 +69,7 @@ run_check () {
                  -g '!**/node_modules/**' -g '!**/dist/**' -g '!**/target/**' \
                  -g '!**/scan-disclosure.sh' \
                  -g '!**/scan-disclosure.yml' \
+                 -g '!**/tests/fixtures/public-repo-guard/**' \
                  "${extra_args[@]}" \
                  -e "${pattern}" "${ROOT}"); then
     echo "${output}"
