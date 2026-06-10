@@ -135,8 +135,9 @@ gh repo create stackspine/gateway --public \
   --disable-wiki \
   --description "StackSpine Gateway — open-source AI control plane"
 
-# Push the rewritten tree
-git remote add origin git@github.com:stackspine/gateway.git
+# Push the rewritten tree (HTTPS via gh credential helper — no SSH key needed)
+gh auth setup-git
+git remote add origin https://github.com/stackspine/gateway.git
 git push -u origin HEAD:main
 git push origin --tags
 
