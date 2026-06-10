@@ -18,7 +18,7 @@ Deno.test("S13: Returns X-API-Version header on all responses", async () => {
     },
     body: JSON.stringify({ task_key: "nonexistent" }),
   });
-  const body = await response.text();
+  const _body = await response.text();
   assertEquals(response.headers.get("X-API-Version"), "1");
 });
 
@@ -34,7 +34,7 @@ Deno.test("S8/S10/S15: Returns 401 for missing API key", async () => {
       messages: [{ role: "user", content: "hello" }],
     }),
   });
-  const body = await response.text();
+  const _body = await response.text();
   // Without x-api-key header, should get 401
   assertEquals(response.status, 401);
   assertEquals(response.headers.get("X-API-Version"), "1");
@@ -53,7 +53,7 @@ Deno.test("S8/S10/S15: Returns 401 for invalid API key", async () => {
       messages: [{ role: "user", content: "hello" }],
     }),
   });
-  const body = await response.text();
+  const _body = await response.text();
   assertEquals(response.status, 401);
 });
 
@@ -70,11 +70,11 @@ Deno.test("S15: Returns X-Trace-Id and traceparent headers", async () => {
       messages: [{ role: "user", content: "hello" }],
     }),
   });
-  const body = await response.text();
+  const _body = await response.text();
 
   // Trace headers should be present even on error responses
-  const traceId = response.headers.get("X-Trace-Id");
-  const traceparent = response.headers.get("traceparent");
+  const _traceId = response.headers.get("X-Trace-Id");
+  const _traceparent = response.headers.get("traceparent");
 
   // These may or may not be present depending on where in the flow the error occurs
   // At minimum, X-API-Version should always be present
@@ -88,7 +88,7 @@ Deno.test("CORS: OPTIONS returns 200", async () => {
       "apikey": SUPABASE_ANON_KEY,
     },
   });
-  const body = await response.text();
+  const _body = await response.text();
   assertEquals(response.status, 200);
   assertExists(response.headers.get("Access-Control-Allow-Origin"));
 });

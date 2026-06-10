@@ -8,7 +8,7 @@ import "https://deno.land/std@0.224.0/dotenv/load.ts";
 import {
   assert,
   assertEquals,
-  assertExists,
+  assertExists as _assertExists,
 } from "https://deno.land/std@0.224.0/assert/mod.ts";
 
 const SUPABASE_URL = Deno.env.get("VITE_SUPABASE_URL")!;

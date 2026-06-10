@@ -30,9 +30,12 @@ export class StackSpineError extends Error {
     this.details = details;
     this.response = response;
 
-    // Maintains proper stack trace for where error was thrown
-    if (Error.captureStackTrace) {
-      Error.captureStackTrace(this, StackSpineError);
+    // Maintains proper stack trace for where error was thrown (V8-only API)
+    const E = Error as unknown as {
+      captureStackTrace?: (target: object, constructor: Function) => void;
+    };
+    if (typeof E.captureStackTrace === "function") {
+      E.captureStackTrace(this, StackSpineError);
     }
   }
 

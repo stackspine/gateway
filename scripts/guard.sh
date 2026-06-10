@@ -74,8 +74,9 @@ PATTERNS=(
 RG="$(command -v rg || true)"
 for pat in "${PATTERNS[@]}"; do
   if [[ -n "${RG}" ]]; then
-    RG_ARGS=(-n --hidden
+    RG_ARGS=(-n --hidden --no-ignore --no-ignore-parent --no-ignore-vcs
       -g '!**/node_modules/**'
+      -g '!**/.git/**'
       -g '!**/guard.sh'
       -g '!**/run-guard-fixtures.sh'
       -g '!**/public-repo-guard.yml'
