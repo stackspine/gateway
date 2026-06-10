@@ -153,9 +153,8 @@ if [[ "${DRY_RUN}" -eq 1 ]]; then
   echo "        --description 'StackSpine Gateway — open-source AI control plane'"
   echo "    gh auth setup-git"
   echo "    git -C <workdir> remote add origin https://github.com/${REPO_SLUG}.git"
-  echo "    git -C <workdir> push -u origin HEAD:${DEFAULT_BRANCH}"
-  echo "      # (re-publish:  git push --force-with-lease -u origin HEAD:${DEFAULT_BRANCH})"
-  echo "    git -C <workdir> push origin --tags --force-with-lease"
+  echo "    git -C <workdir> push --force -u origin HEAD:${DEFAULT_BRANCH}"
+  echo "    git -C <workdir> push origin --tags --force"
   echo "    gh workflow run 'Verify Public Tree' -R ${REPO_SLUG}"
 
   echo
