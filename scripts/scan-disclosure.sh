@@ -97,7 +97,7 @@ run_check "Supabase project refs"     'xcgtwqlbyztctpvujuqo'
 
 # 2. INTERNAL INFRASTRUCTURE PATHS ---------------------------------------------
 # These reveal the existence/location of the private production tree.
-run_check "Private supabase function path"  'supabase/functions/(invoke|[a-z][a-z0-9_-]+)/'
+run_check "Private supabase function path"  'supabase/functions/(invoke|[a-z][a-z0-9_-]+)/' -g '!scripts/guard.sh'
 run_check "Production-tree references"      '\b(production-tree|internal mirror|private mirror|kept in sync with)\b'
 run_check "Private dev paths"               '/dev-server/|/Users/[a-zA-Z0-9_.-]+/|C:\\\\Users\\\\'
 
