@@ -89,7 +89,7 @@ for pat in "${PATTERNS[@]}"; do
       FAIL=1
     fi
   else
-    GREP_ARGS=(-rEn --binary-files=without-match
+    GREP_ARGS=(-rEnI
       --exclude-dir=node_modules
       --exclude-dir=.git-filter-repo
       --exclude='guard.sh'
@@ -99,7 +99,7 @@ for pat in "${PATTERNS[@]}"; do
     if [[ "${EXCLUDE_FIXTURES}" -eq 1 ]]; then
       GREP_ARGS+=(--exclude-dir='public-repo-guard')
     fi
-    if grep "${GREP_ARGS[@]}" -e "${pat}" "${ROOT}" >/dev/null 2>&1; then
+    if grep "${GREP_ARGS[@]}" -e "${pat}" "${ROOT}" >/dev/null; then
       echo "❌ credential pattern matched: ${pat}"
       FAIL=1
     fi
