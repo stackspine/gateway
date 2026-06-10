@@ -181,10 +181,15 @@ publication is reviewed.
 - **`gh repo create: name already exists`** — the repo exists; the wrapper
   script handles this automatically. For the manual path, skip `gh repo
   create` and use `git push --force-with-lease`.
-- **`Permission denied (publickey)` on push** — register your SSH key with
-  `gh ssh-key add ~/.ssh/id_ed25519.pub`, or switch the remote to
-  `https://github.com/stackspine/gateway.git` and let `gh auth` provide the
-  credential.
+- **`Permission denied (publickey)` on push** — the publish script now uses
+  HTTPS, so this should not happen. If you see it, you're on an old version
+  of the script with an `git@github.com:...` remote — pull latest, or run
+  `gh auth setup-git` and re-set the remote to
+  `https://github.com/stackspine/gateway.git`.
+- **`could not read Username for 'https://github.com'`** — you skipped
+  `gh auth setup-git`. Run it and retry the push.
+- **`403` / token missing `repo` scope** — run
+  `gh auth refresh -s repo,workflow`.
 - **`git-filter-repo: error: cannot use --force ... not a fresh clone`** —
   re-clone with `git clone --no-local` and retry.
 - **Guard fails on rewritten tree but not on HEAD** — a historical commit
