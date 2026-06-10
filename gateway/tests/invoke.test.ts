@@ -1,5 +1,8 @@
 import "https://deno.land/std@0.224.0/dotenv/load.ts";
-import { assertEquals, assertExists } from "https://deno.land/std@0.224.0/assert/mod.ts";
+import {
+  assertEquals,
+  assertExists,
+} from "https://deno.land/std@0.224.0/assert/mod.ts";
 
 const SUPABASE_URL = Deno.env.get("VITE_SUPABASE_URL")!;
 const SUPABASE_ANON_KEY = Deno.env.get("VITE_SUPABASE_PUBLISHABLE_KEY")!;
@@ -72,7 +75,7 @@ Deno.test("S15: Returns X-Trace-Id and traceparent headers", async () => {
   // Trace headers should be present even on error responses
   const traceId = response.headers.get("X-Trace-Id");
   const traceparent = response.headers.get("traceparent");
-  
+
   // These may or may not be present depending on where in the flow the error occurs
   // At minimum, X-API-Version should always be present
   assertEquals(response.headers.get("X-API-Version"), "1");

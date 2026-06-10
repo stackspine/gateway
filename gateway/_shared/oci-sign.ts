@@ -39,7 +39,10 @@ async function importOciPrivateKey(b64: string): Promise<CryptoKey> {
 }
 
 async function sha256Base64(input: string): Promise<string> {
-  const buf = await crypto.subtle.digest("SHA-256", new TextEncoder().encode(input));
+  const buf = await crypto.subtle.digest(
+    "SHA-256",
+    new TextEncoder().encode(input),
+  );
   const bytes = new Uint8Array(buf);
   let bin = "";
   for (let i = 0; i < bytes.length; i++) bin += String.fromCharCode(bytes[i]);
@@ -84,7 +87,8 @@ export async function signOciRequest(opts: {
   );
   const signatureB64 = toBase64(sig);
 
-  const keyId = `${opts.creds.tenancyId}/${opts.creds.userId}/${opts.creds.fingerprint}`;
+  const keyId =
+    `${opts.creds.tenancyId}/${opts.creds.userId}/${opts.creds.fingerprint}`;
   const authorization = [
     `Signature version="1"`,
     `keyId="${keyId}"`,

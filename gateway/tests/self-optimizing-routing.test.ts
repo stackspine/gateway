@@ -5,7 +5,11 @@
  * adjusts traffic distribution based on real-time performance.
  */
 import "https://deno.land/std@0.224.0/dotenv/load.ts";
-import { assertEquals, assert, assertExists } from "https://deno.land/std@0.224.0/assert/mod.ts";
+import {
+  assert,
+  assertEquals,
+  assertExists,
+} from "https://deno.land/std@0.224.0/assert/mod.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2.49.1";
 
 const SUPABASE_URL = Deno.env.get("VITE_SUPABASE_URL")!;
@@ -27,7 +31,9 @@ interface SeedResult {
   apiKeyRaw: string;
 }
 
-async function seedTestData(opts: Record<string, unknown> = {}): Promise<SeedResult> {
+async function seedTestData(
+  opts: Record<string, unknown> = {},
+): Promise<SeedResult> {
   const response = await fetch(TEST_INVOKE_URL, {
     method: "POST",
     headers: {
@@ -70,7 +76,7 @@ Deno.test("Self-Optimizing: Returns empty results when no tasks have auto_optimi
     body: JSON.stringify({}),
   });
   const body = await response.json();
-  
+
   // Should succeed — either no tasks or returns results
   assertEquals(response.status, 200);
   assert(body.message || body.success, "Should return success or message");
@@ -100,7 +106,9 @@ Deno.test("Self-Optimizing: Skips task with insufficient call logs (<50)", async
     assertEquals(response.status, 200);
     // The task should be found but skipped due to insufficient data
     if (body.results) {
-      const taskResult = body.results.find((r: { task_id: string }) => r.task_id === seed.taskId);
+      const taskResult = body.results.find((r: { task_id: string }) =>
+        r.task_id === seed.taskId
+      );
       // Either not in results (skipped) or adjustments = 0
       if (taskResult) {
         assertEquals(taskResult.adjustments, 0);
@@ -140,7 +148,9 @@ Deno.test("Self-Optimizing: Processes task with sufficient data and 2+ routes", 
     assertExists(body.results, "Should have results array");
 
     // Find our task in results
-    const taskResult = body.results.find((r: { task_id: string }) => r.task_id === seed.taskId);
+    const taskResult = body.results.find((r: { task_id: string }) =>
+      r.task_id === seed.taskId
+    );
     assertExists(taskResult, "Our task should be in results");
     // Adjustments may or may not have occurred depending on delta threshold (>5)
     assert(taskResult.adjustments >= 0, "Adjustments should be non-negative");
@@ -181,7 +191,10 @@ Deno.test("Self-Optimizing: Respects max ±15 weight delta guardrail", async () 
     // Max change per cycle is ±15
     // We can't directly check the DB from test, but the function completing without error
     // and returning results indicates the guardrails were respected
-    assert(body.success === true || body.message, "Should succeed or have message");
+    assert(
+      body.success === true || body.message,
+      "Should succeed or have message",
+    );
   } finally {
     await cleanupTestData(seed.orgId);
   }
