@@ -117,11 +117,14 @@ else
   EXISTS=0
 fi
 
-# ---------- 7. Push ----------
+# ---------- 7. Push (HTTPS via gh credential helper; no SSH key required) ----------
+say "Wiring git to use gh's credential helper (idempotent)"
+run "gh auth setup-git"
+
 say "Pushing to ${REPO_SLUG}"
 (
   cd "${WORKDIR}"
-  run "git remote add origin 'git@github.com:${REPO_SLUG}.git' 2>/dev/null || git remote set-url origin 'git@github.com:${REPO_SLUG}.git'"
+  run "git remote add origin 'https://github.com/${REPO_SLUG}.git' 2>/dev/null || git remote set-url origin 'https://github.com/${REPO_SLUG}.git'"
   if [[ "${EXISTS}" -eq 1 ]]; then
     run "git push --force-with-lease -u origin HEAD:${DEFAULT_BRANCH}"
   else
