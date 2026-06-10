@@ -149,7 +149,7 @@ export function scanForTopics(
   blockedTopics: string[],
 ): GuardrailScanResult {
   const matches: GuardrailMatch[] = [];
-  const lowerText = text.toLowerCase();
+  const _lowerText = text.toLowerCase();
 
   for (const topic of blockedTopics) {
     const trimmed = topic.trim().toLowerCase();

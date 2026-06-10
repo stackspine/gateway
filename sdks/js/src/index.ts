@@ -38,11 +38,9 @@ import {
   BudgetExceededError,
   AllProvidersFailedError,
   TimeoutError,
-  ValidationError,
-  StreamError,
 } from './errors';
 
-import { streamResponse, collectStream } from './streaming';
+import { streamResponse } from './streaming';
 
 // Re-export types and errors
 export * from './types';

@@ -35,8 +35,6 @@ jobs:
   publish-npm:
     name: Publish — npm
     needs: disclosure-scan
-
-    name: Publish — npm
     runs-on: ubuntu-latest
     defaults:
       run:
