@@ -21,8 +21,32 @@ if [[ ! -x "${GUARD}" ]]; then
   chmod +x "${GUARD}" || true
 fi
 
+# CI diagnostics: shows what scanner+version the runner has, and confirms the
+# canary fixture is actually on disk with expected content. Silent locally
+# unless you set RUN_GUARD_DEBUG=1.
+if [[ "${CI:-}" == "true" || "${RUN_GUARD_DEBUG:-0}" == "1" ]]; then
+  echo "── environment ──"
+  command -v rg >/dev/null && rg --version | head -1 || echo "rg: not installed"
+  grep --version | head -1
+  echo "FIXTURES=${FIXTURES}"
+  canary="${FIXTURES}/fail/anthropic-key"
+  if [[ -d "${canary}" ]]; then
+    echo "canary fixture contents:"
+    ls -la "${canary}" | sed 's/^/  /'
+    for f in "${canary}"/*; do
+      echo "  --- ${f} ---"
+      sed 's/^/    /' "${f}"
+    done
+  else
+    echo "canary fixture MISSING: ${canary}"
+  fi
+  echo ""
+fi
+
 FAIL_COUNT=0
 TOTAL=0
+
+
 
 run_case() {
   local dir="$1"
