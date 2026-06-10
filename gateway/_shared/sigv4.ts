@@ -16,13 +16,16 @@ async function sha256Hex(data: string | Uint8Array): Promise<string> {
     .join("");
 }
 
-async function hmac(key: ArrayBuffer | Uint8Array, data: string): Promise<ArrayBuffer> {
+async function hmac(
+  key: ArrayBuffer | Uint8Array,
+  data: string,
+): Promise<ArrayBuffer> {
   const cryptoKey = await crypto.subtle.importKey(
     "raw",
     key,
     { name: "HMAC", hash: "SHA-256" },
     false,
-    ["sign"]
+    ["sign"],
   );
   return await crypto.subtle.sign("HMAC", cryptoKey, encoder.encode(data));
 }
@@ -48,15 +51,16 @@ export interface SigV4Options {
 /**
  * Sign an AWS request using SigV4 and return the headers to attach (including Authorization).
  */
-export async function signSigV4(opts: SigV4Options): Promise<Record<string, string>> {
+export async function signSigV4(
+  opts: SigV4Options,
+): Promise<Record<string, string>> {
   const u = new URL(opts.url);
   const host = u.host;
   const canonicalUri = u.pathname || "/";
   const canonicalQuery = u.searchParams.toString();
 
   const now = new Date();
-  const amzDate =
-    now.toISOString().replace(/[:-]|\.\d{3}/g, ""); // YYYYMMDDTHHMMSSZ
+  const amzDate = now.toISOString().replace(/[:-]|\.\d{3}/g, ""); // YYYYMMDDTHHMMSSZ
   const dateStamp = amzDate.slice(0, 8);
 
   const payloadHash = await sha256Hex(opts.body);
@@ -87,7 +91,8 @@ export async function signSigV4(opts: SigV4Options): Promise<Record<string, stri
   ].join("\n");
 
   const algorithm = "AWS4-HMAC-SHA256";
-  const credentialScope = `${dateStamp}/${opts.region}/${opts.service}/aws4_request`;
+  const credentialScope =
+    `${dateStamp}/${opts.region}/${opts.service}/aws4_request`;
   const stringToSign = [
     algorithm,
     amzDate,
@@ -95,13 +100,17 @@ export async function signSigV4(opts: SigV4Options): Promise<Record<string, stri
     await sha256Hex(canonicalRequest),
   ].join("\n");
 
-  const kDate = await hmac(encoder.encode("AWS4" + opts.secretAccessKey), dateStamp);
+  const kDate = await hmac(
+    encoder.encode("AWS4" + opts.secretAccessKey),
+    dateStamp,
+  );
   const kRegion = await hmac(kDate, opts.region);
   const kService = await hmac(kRegion, opts.service);
   const kSigning = await hmac(kService, "aws4_request");
   const signature = toHex(await hmac(kSigning, stringToSign));
 
-  const authorization = `${algorithm} Credential=${opts.accessKeyId}/${credentialScope}, SignedHeaders=${signedHeaders}, Signature=${signature}`;
+  const authorization =
+    `${algorithm} Credential=${opts.accessKeyId}/${credentialScope}, SignedHeaders=${signedHeaders}, Signature=${signature}`;
 
   return {
     ...baseHeaders,
@@ -121,7 +130,7 @@ export function parseAwsCredentials(raw: string): {
   const parts = raw.split(":");
   if (parts.length < 2) {
     throw new Error(
-      'Bedrock credentials must be formatted as "ACCESS_KEY_ID:SECRET_ACCESS_KEY" (optionally ":SESSION_TOKEN")'
+      'Bedrock credentials must be formatted as "ACCESS_KEY_ID:SECRET_ACCESS_KEY" (optionally ":SESSION_TOKEN")',
     );
   }
   return {

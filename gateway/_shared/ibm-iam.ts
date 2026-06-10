@@ -29,9 +29,15 @@ export async function getIbmIamToken(apiKey: string): Promise<string> {
     }),
   });
   if (!res.ok) {
-    throw new Error(`IBM IAM token exchange failed (${res.status}): ${await res.text()}`);
+    throw new Error(
+      `IBM IAM token exchange failed (${res.status}): ${await res.text()}`,
+    );
   }
-  const json = await res.json() as { access_token: string; expiration: number; expires_in: number };
+  const json = await res.json() as {
+    access_token: string;
+    expiration: number;
+    expires_in: number;
+  };
   const expiresAt = json.expiration || (now + (json.expires_in || 3600));
   tokenCache.set(apiKey, { token: json.access_token, expiresAt });
   return json.access_token;

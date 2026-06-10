@@ -15,7 +15,9 @@ function getAllowedOrigins(): string[] {
   if (SUPABASE_URL) origins.push(SUPABASE_URL);
 
   if (ALLOWED_ORIGINS_ENV) {
-    origins.push(...ALLOWED_ORIGINS_ENV.split(",").map((o) => o.trim()).filter(Boolean));
+    origins.push(
+      ...ALLOWED_ORIGINS_ENV.split(",").map((o) => o.trim()).filter(Boolean),
+    );
   }
 
   return origins;
@@ -33,11 +35,14 @@ function originAllowed(origin: string | null): boolean {
  */
 export function internalCorsHeaders(req: Request): Record<string, string> {
   const origin = req.headers.get("origin");
-  const allowedOrigin = originAllowed(origin) ? origin! : getAllowedOrigins()[0] || "";
+  const allowedOrigin = originAllowed(origin)
+    ? origin!
+    : getAllowedOrigins()[0] || "";
 
   return {
     "Access-Control-Allow-Origin": allowedOrigin,
-    "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type",
+    "Access-Control-Allow-Headers":
+      "authorization, x-client-info, apikey, content-type",
     "Access-Control-Allow-Methods": "POST, GET, OPTIONS",
     "Vary": "Origin",
   };
@@ -48,7 +53,8 @@ export function internalCorsHeaders(req: Request): Record<string, string> {
  */
 export const publicCorsHeaders: Record<string, string> = {
   "Access-Control-Allow-Origin": "*",
-  "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type, x-api-key, x-region, x-idempotency-key",
+  "Access-Control-Allow-Headers":
+    "authorization, x-client-info, apikey, content-type, x-api-key, x-region, x-idempotency-key",
 };
 
 /**

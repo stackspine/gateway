@@ -44,7 +44,7 @@ export async function portContext(
   sessionId: string | null,
   orgId: string,
   supabase: SupabaseClient,
-  lovableApiKey: string | undefined
+  lovableApiKey: string | undefined,
 ): Promise<PortResult> {
   const contextWindow = modelProfile.context_window_tokens || 128000;
   const threshold = Math.floor(contextWindow * 0.8); // 80% — leave headroom for output
@@ -52,7 +52,12 @@ export async function portContext(
 
   // Under threshold → pass through unchanged
   if (originalTokens <= threshold) {
-    return { messages: fullMessages, compressed: false, originalTokens, compressedTokens: originalTokens };
+    return {
+      messages: fullMessages,
+      compressed: false,
+      originalTokens,
+      compressedTokens: originalTokens,
+    };
   }
 
   // Separate system prompt from conversation
@@ -83,13 +88,19 @@ export async function portContext(
     if (cached?.summary) {
       const summaryMessage: Message = {
         role: "assistant",
-        content: `[Context summary of previous conversation]: ${cached.summary}`,
+        content:
+          `[Context summary of previous conversation]: ${cached.summary}`,
       };
       const ported = [...systemMessages, summaryMessage, ...recentMessages];
       const compressedTokens = estimateTokens(ported);
 
       if (compressedTokens <= threshold) {
-        return { messages: ported, compressed: true, originalTokens, compressedTokens };
+        return {
+          messages: ported,
+          compressed: true,
+          originalTokens,
+          compressedTokens,
+        };
       }
       // Cached summary still too large — fall through to re-summarize or truncate
     }
@@ -122,10 +133,18 @@ export async function portContext(
             .then(() => {}); // fire-and-forget
         }
 
-        return { messages: ported, compressed: true, originalTokens, compressedTokens };
+        return {
+          messages: ported,
+          compressed: true,
+          originalTokens,
+          compressedTokens,
+        };
       }
     } catch (e) {
-      console.error("Context summarization failed, falling back to truncation:", e);
+      console.error(
+        "Context summarization failed, falling back to truncation:",
+        e,
+      );
     }
   }
 
@@ -134,7 +153,11 @@ export async function portContext(
 }
 
 /** Truncate messages from the front (oldest) until they fit within the token limit */
-function truncateToFit(messages: Message[], maxTokens: number, originalTokens: number): PortResult {
+function truncateToFit(
+  messages: Message[],
+  maxTokens: number,
+  originalTokens: number,
+): PortResult {
   const systemMessages = messages.filter((m) => m.role === "system");
   const conversation = messages.filter((m) => m.role !== "system");
 
@@ -161,7 +184,10 @@ function truncateToFit(messages: Message[], maxTokens: number, originalTokens: n
 }
 
 /** Call Lovable AI to summarize older messages into a concise context block */
-async function summarizeMessages(messages: Message[], apiKey: string): Promise<string | null> {
+async function summarizeMessages(
+  messages: Message[],
+  apiKey: string,
+): Promise<string | null> {
   const conversationText = messages
     .map((m) => `${m.role}: ${m.content}`)
     .join("\n\n");
@@ -171,32 +197,39 @@ async function summarizeMessages(messages: Message[], apiKey: string): Promise<s
     ? conversationText.slice(-50000)
     : conversationText;
 
-  const response = await fetch("https://ai.gateway.lovable.dev/v1/chat/completions", {
-    method: "POST",
-    headers: {
-      Authorization: `Bearer ${apiKey}`,
-      "Content-Type": "application/json",
+  const response = await fetch(
+    "https://ai.gateway.lovable.dev/v1/chat/completions",
+    {
+      method: "POST",
+      headers: {
+        Authorization: `Bearer ${apiKey}`,
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify({
+        model: "google/gemini-2.5-flash-lite",
+        messages: [
+          {
+            role: "system",
+            content:
+              "You are a conversation summarizer. Produce a concise summary of the following conversation history. Preserve key facts, decisions, user preferences, and any context that would be needed to continue the conversation naturally. Be factual and thorough but brief. Output only the summary, no preamble.",
+          },
+          {
+            role: "user",
+            content: `Summarize this conversation history:\n\n${truncatedText}`,
+          },
+        ],
+        max_tokens: 2048,
+        temperature: 0.3,
+      }),
     },
-    body: JSON.stringify({
-      model: "google/gemini-2.5-flash-lite",
-      messages: [
-        {
-          role: "system",
-          content:
-            "You are a conversation summarizer. Produce a concise summary of the following conversation history. Preserve key facts, decisions, user preferences, and any context that would be needed to continue the conversation naturally. Be factual and thorough but brief. Output only the summary, no preamble.",
-        },
-        {
-          role: "user",
-          content: `Summarize this conversation history:\n\n${truncatedText}`,
-        },
-      ],
-      max_tokens: 2048,
-      temperature: 0.3,
-    }),
-  });
+  );
 
   if (!response.ok) {
-    console.error("Summarization API error:", response.status, await response.text());
+    console.error(
+      "Summarization API error:",
+      response.status,
+      await response.text(),
+    );
     return null;
   }
 

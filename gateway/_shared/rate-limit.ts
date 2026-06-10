@@ -13,12 +13,12 @@ export const RATE_LIMIT_MAX_REQUESTS_PER_IP = 120;
 export function getClientIp(req: Request): string {
   const forwardedFor = req.headers.get("x-forwarded-for");
   if (forwardedFor) return forwardedFor.split(",")[0].trim();
-  
+
   const realIp = req.headers.get("x-real-ip");
   if (realIp) return realIp.trim();
-  
+
   const cfConnectingIp = req.headers.get("cf-connecting-ip");
   if (cfConnectingIp) return cfConnectingIp.trim();
-  
+
   return "unknown";
 }

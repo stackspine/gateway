@@ -69,6 +69,7 @@ run_check () {
                  -g '!**/node_modules/**' -g '!**/dist/**' -g '!**/target/**' \
                  -g '!**/scan-disclosure.sh' \
                  -g '!**/scan-disclosure.yml' \
+                 -g '!**/tests/fixtures/public-repo-guard/**' \
                  "${extra_args[@]}" \
                  -e "${pattern}" "${ROOT}"); then
     echo "${output}"
@@ -97,7 +98,7 @@ run_check "Supabase project refs"     'xcgtwqlbyztctpvujuqo'
 
 # 2. INTERNAL INFRASTRUCTURE PATHS ---------------------------------------------
 # These reveal the existence/location of the private production tree.
-run_check "Private supabase function path"  'supabase/functions/(invoke|[a-z][a-z0-9_-]+)/'
+run_check "Private supabase function path"  'supabase/functions/(invoke|[a-z][a-z0-9_-]+)/' -g '!scripts/guard.sh'
 run_check "Production-tree references"      '\b(production-tree|internal mirror|private mirror|kept in sync with)\b'
 run_check "Private dev paths"               '/dev-server/|/Users/[a-zA-Z0-9_.-]+/|C:\\\\Users\\\\'
 
@@ -143,7 +144,7 @@ run_check "Inline patent-claim annotations" '\[Patent\s+\d+,\s*Claim'
 echo ""
 echo "── Patent 3 implementation absence in OSS ──"
 if output=$(rg -n --color=never \
-               -g '!**/tests/**' -g '!**/scan-disclosure.sh' -g '!NOTICE' \
+               -g '!**/tests/**' -g '!**/scan-disclosure.sh' -g '!**/guard.sh' -g '!NOTICE' \
                -e 'optimize-route-weights' -e 'bounded\s+self.optimi' -e 'weight_delta' -e 'asymmetric.*weight' \
                "${ROOT}"); then
   echo "${output}"

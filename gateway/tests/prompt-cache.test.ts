@@ -1,5 +1,8 @@
 import "https://deno.land/std@0.224.0/dotenv/load.ts";
-import { assertEquals, assertNotEquals } from "https://deno.land/std@0.224.0/assert/mod.ts";
+import {
+  assertEquals,
+  assertNotEquals,
+} from "https://deno.land/std@0.224.0/assert/mod.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2.49.1";
 
 const SUPABASE_URL = Deno.env.get("VITE_SUPABASE_URL") ?? "";
@@ -21,7 +24,9 @@ let apiKey: string;
 async function hashKey(key: string): Promise<string> {
   const data = new TextEncoder().encode(key);
   const buf = await crypto.subtle.digest("SHA-256", data);
-  return Array.from(new Uint8Array(buf)).map(b => b.toString(16).padStart(2, "0")).join("");
+  return Array.from(new Uint8Array(buf)).map((b) =>
+    b.toString(16).padStart(2, "0")
+  ).join("");
 }
 
 async function seedTestData(cacheEnabled: boolean, ttlMinutes = 60) {
@@ -72,173 +77,225 @@ async function cleanup() {
 // Tests
 // ============================================================================
 
-Deno.test({ name: "Prompt Cache - cache HIT returns cached response with zero cost", ignore: !hasServiceKey, fn: async () => {
-  try {
-    await seedTestData(true, 60);
+Deno.test({
+  name: "Prompt Cache - cache HIT returns cached response with zero cost",
+  ignore: !hasServiceKey,
+  fn: async () => {
+    try {
+      await seedTestData(true, 60);
 
-    // Pre-seed a cache entry
-    const messages = [{ role: "user", content: "Hello cache test" }];
-    const cachePayload = JSON.stringify({ task_key: `${TEST_PREFIX}task`, messages });
-    const hashBuf = await crypto.subtle.digest("SHA-256", new TextEncoder().encode(cachePayload));
-    const cacheKeyHash = Array.from(new Uint8Array(hashBuf)).map(b => b.toString(16).padStart(2, "0")).join("");
-
-    await supabase!.from("prompt_cache").upsert({
-      org_id: orgId,
-      cache_key_hash: cacheKeyHash,
-      response_content: "Cached hello response",
-      usage_metadata: { model: "test-model", provider: "openai", usage: { input_tokens: 10, output_tokens: 5, total_tokens: 15 } },
-      cost_usd: 0.001,
-      expires_at: new Date(Date.now() + 60 * 60 * 1000).toISOString(),
-    }, { onConflict: "org_id,cache_key_hash" });
-
-    // Call invoke
-    const res = await fetch(`${SUPABASE_URL}/functions/v1/invoke`, {
-      method: "POST",
-      headers: {
-        "Content-Type": "application/json",
-        "x-api-key": apiKey,
-      },
-      body: JSON.stringify({
+      // Pre-seed a cache entry
+      const messages = [{ role: "user", content: "Hello cache test" }];
+      const cachePayload = JSON.stringify({
         task_key: `${TEST_PREFIX}task`,
         messages,
-      }),
-    });
+      });
+      const hashBuf = await crypto.subtle.digest(
+        "SHA-256",
+        new TextEncoder().encode(cachePayload),
+      );
+      const cacheKeyHash = Array.from(new Uint8Array(hashBuf)).map((b) =>
+        b.toString(16).padStart(2, "0")
+      ).join("");
 
-    const body = await res.json();
+      await supabase!.from("prompt_cache").upsert({
+        org_id: orgId,
+        cache_key_hash: cacheKeyHash,
+        response_content: "Cached hello response",
+        usage_metadata: {
+          model: "test-model",
+          provider: "openai",
+          usage: { input_tokens: 10, output_tokens: 5, total_tokens: 15 },
+        },
+        cost_usd: 0.001,
+        expires_at: new Date(Date.now() + 60 * 60 * 1000).toISOString(),
+      }, { onConflict: "org_id,cache_key_hash" });
 
-    assertEquals(res.status, 200);
-    assertEquals(body.content, "Cached hello response");
-    assertEquals(body.cost_usd, 0);
-    assertEquals(body.cache, "HIT");
-    assertEquals(res.headers.get("X-Cache"), "HIT");
-  } finally {
-    await cleanup();
-  }
-}});
+      // Call invoke
+      const res = await fetch(`${SUPABASE_URL}/functions/v1/invoke`, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          "x-api-key": apiKey,
+        },
+        body: JSON.stringify({
+          task_key: `${TEST_PREFIX}task`,
+          messages,
+        }),
+      });
 
-Deno.test({ name: "Prompt Cache - cache MISS when caching disabled", ignore: !hasServiceKey, fn: async () => {
-  try {
-    await seedTestData(false);
+      const body = await res.json();
 
-    // Even with a matching cache entry, caching disabled means no lookup
-    const messages = [{ role: "user", content: "Hello no cache" }];
-    const cachePayload = JSON.stringify({ task_key: `${TEST_PREFIX}task`, messages });
-    const hashBuf = await crypto.subtle.digest("SHA-256", new TextEncoder().encode(cachePayload));
-    const cacheKeyHash = Array.from(new Uint8Array(hashBuf)).map(b => b.toString(16).padStart(2, "0")).join("");
+      assertEquals(res.status, 200);
+      assertEquals(body.content, "Cached hello response");
+      assertEquals(body.cost_usd, 0);
+      assertEquals(body.cache, "HIT");
+      assertEquals(res.headers.get("X-Cache"), "HIT");
+    } finally {
+      await cleanup();
+    }
+  },
+});
 
-    await supabase!.from("prompt_cache").upsert({
-      org_id: orgId,
-      cache_key_hash: cacheKeyHash,
-      response_content: "Should not be returned",
-      usage_metadata: {},
-      cost_usd: 0.001,
-      expires_at: new Date(Date.now() + 60 * 60 * 1000).toISOString(),
-    }, { onConflict: "org_id,cache_key_hash" });
+Deno.test({
+  name: "Prompt Cache - cache MISS when caching disabled",
+  ignore: !hasServiceKey,
+  fn: async () => {
+    try {
+      await seedTestData(false);
 
-    const res = await fetch(`${SUPABASE_URL}/functions/v1/invoke`, {
-      method: "POST",
-      headers: {
-        "Content-Type": "application/json",
-        "x-api-key": apiKey,
-      },
-      body: JSON.stringify({
+      // Even with a matching cache entry, caching disabled means no lookup
+      const messages = [{ role: "user", content: "Hello no cache" }];
+      const cachePayload = JSON.stringify({
         task_key: `${TEST_PREFIX}task`,
         messages,
-      }),
-    });
+      });
+      const hashBuf = await crypto.subtle.digest(
+        "SHA-256",
+        new TextEncoder().encode(cachePayload),
+      );
+      const cacheKeyHash = Array.from(new Uint8Array(hashBuf)).map((b) =>
+        b.toString(16).padStart(2, "0")
+      ).join("");
 
-    const body = await res.json();
+      await supabase!.from("prompt_cache").upsert({
+        org_id: orgId,
+        cache_key_hash: cacheKeyHash,
+        response_content: "Should not be returned",
+        usage_metadata: {},
+        cost_usd: 0.001,
+        expires_at: new Date(Date.now() + 60 * 60 * 1000).toISOString(),
+      }, { onConflict: "org_id,cache_key_hash" });
 
-    // Should NOT return cached content — will fail with "No active route" since
-    // we didn't seed routes, proving caching was bypassed
-    assertNotEquals(body.content, "Should not be returned");
-    assertNotEquals(res.headers.get("X-Cache"), "HIT");
-  } finally {
-    await cleanup();
-  }
-}});
+      const res = await fetch(`${SUPABASE_URL}/functions/v1/invoke`, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          "x-api-key": apiKey,
+        },
+        body: JSON.stringify({
+          task_key: `${TEST_PREFIX}task`,
+          messages,
+        }),
+      });
 
-Deno.test({ name: "Prompt Cache - expired cache entry is not returned", ignore: !hasServiceKey, fn: async () => {
-  try {
-    await seedTestData(true, 1); // 1 minute TTL
+      const body = await res.json();
 
-    const messages = [{ role: "user", content: "Hello expired" }];
-    const cachePayload = JSON.stringify({ task_key: `${TEST_PREFIX}task`, messages });
-    const hashBuf = await crypto.subtle.digest("SHA-256", new TextEncoder().encode(cachePayload));
-    const cacheKeyHash = Array.from(new Uint8Array(hashBuf)).map(b => b.toString(16).padStart(2, "0")).join("");
+      // Should NOT return cached content — will fail with "No active route" since
+      // we didn't seed routes, proving caching was bypassed
+      assertNotEquals(body.content, "Should not be returned");
+      assertNotEquals(res.headers.get("X-Cache"), "HIT");
+    } finally {
+      await cleanup();
+    }
+  },
+});
 
-    // Seed an already-expired cache entry
-    await supabase!.from("prompt_cache").upsert({
-      org_id: orgId,
-      cache_key_hash: cacheKeyHash,
-      response_content: "Expired response",
-      usage_metadata: {},
-      cost_usd: 0.001,
-      expires_at: new Date(Date.now() - 60 * 1000).toISOString(), // expired 1 min ago
-    }, { onConflict: "org_id,cache_key_hash" });
+Deno.test({
+  name: "Prompt Cache - expired cache entry is not returned",
+  ignore: !hasServiceKey,
+  fn: async () => {
+    try {
+      await seedTestData(true, 1); // 1 minute TTL
 
-    const res = await fetch(`${SUPABASE_URL}/functions/v1/invoke`, {
-      method: "POST",
-      headers: {
-        "Content-Type": "application/json",
-        "x-api-key": apiKey,
-      },
-      body: JSON.stringify({
+      const messages = [{ role: "user", content: "Hello expired" }];
+      const cachePayload = JSON.stringify({
         task_key: `${TEST_PREFIX}task`,
         messages,
-      }),
-    });
+      });
+      const hashBuf = await crypto.subtle.digest(
+        "SHA-256",
+        new TextEncoder().encode(cachePayload),
+      );
+      const cacheKeyHash = Array.from(new Uint8Array(hashBuf)).map((b) =>
+        b.toString(16).padStart(2, "0")
+      ).join("");
 
-    const body = await res.json();
+      // Seed an already-expired cache entry
+      await supabase!.from("prompt_cache").upsert({
+        org_id: orgId,
+        cache_key_hash: cacheKeyHash,
+        response_content: "Expired response",
+        usage_metadata: {},
+        cost_usd: 0.001,
+        expires_at: new Date(Date.now() - 60 * 1000).toISOString(), // expired 1 min ago
+      }, { onConflict: "org_id,cache_key_hash" });
 
-    // Expired entry should not be returned; will fall through to route selection
-    assertNotEquals(body.content, "Expired response");
-    assertNotEquals(body.cache, "HIT");
-  } finally {
-    await cleanup();
-  }
-}});
+      const res = await fetch(`${SUPABASE_URL}/functions/v1/invoke`, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          "x-api-key": apiKey,
+        },
+        body: JSON.stringify({
+          task_key: `${TEST_PREFIX}task`,
+          messages,
+        }),
+      });
 
-Deno.test({ name: "Prompt Cache - streaming requests skip cache even when enabled", ignore: !hasServiceKey, fn: async () => {
-  try {
-    await seedTestData(true, 60);
+      const body = await res.json();
 
-    const messages = [{ role: "user", content: "Hello stream test" }];
-    const cachePayload = JSON.stringify({ task_key: `${TEST_PREFIX}task`, messages });
-    const hashBuf = await crypto.subtle.digest("SHA-256", new TextEncoder().encode(cachePayload));
-    const cacheKeyHash = Array.from(new Uint8Array(hashBuf)).map(b => b.toString(16).padStart(2, "0")).join("");
+      // Expired entry should not be returned; will fall through to route selection
+      assertNotEquals(body.content, "Expired response");
+      assertNotEquals(body.cache, "HIT");
+    } finally {
+      await cleanup();
+    }
+  },
+});
 
-    // Seed a cache entry that should be ignored for streaming
-    await supabase!.from("prompt_cache").upsert({
-      org_id: orgId,
-      cache_key_hash: cacheKeyHash,
-      response_content: "Should not return for stream",
-      usage_metadata: {},
-      cost_usd: 0.001,
-      expires_at: new Date(Date.now() + 60 * 60 * 1000).toISOString(),
-    }, { onConflict: "org_id,cache_key_hash" });
+Deno.test({
+  name: "Prompt Cache - streaming requests skip cache even when enabled",
+  ignore: !hasServiceKey,
+  fn: async () => {
+    try {
+      await seedTestData(true, 60);
 
-    const res = await fetch(`${SUPABASE_URL}/functions/v1/invoke`, {
-      method: "POST",
-      headers: {
-        "Content-Type": "application/json",
-        "x-api-key": apiKey,
-      },
-      body: JSON.stringify({
+      const messages = [{ role: "user", content: "Hello stream test" }];
+      const cachePayload = JSON.stringify({
         task_key: `${TEST_PREFIX}task`,
         messages,
-        stream: true,
-      }),
-    });
+      });
+      const hashBuf = await crypto.subtle.digest(
+        "SHA-256",
+        new TextEncoder().encode(cachePayload),
+      );
+      const cacheKeyHash = Array.from(new Uint8Array(hashBuf)).map((b) =>
+        b.toString(16).padStart(2, "0")
+      ).join("");
 
-    // Consume response body
-    const bodyText = await res.text();
+      // Seed a cache entry that should be ignored for streaming
+      await supabase!.from("prompt_cache").upsert({
+        org_id: orgId,
+        cache_key_hash: cacheKeyHash,
+        response_content: "Should not return for stream",
+        usage_metadata: {},
+        cost_usd: 0.001,
+        expires_at: new Date(Date.now() + 60 * 60 * 1000).toISOString(),
+      }, { onConflict: "org_id,cache_key_hash" });
 
-    // Streaming bypasses cache — should NOT return the cached content
-    // Will fail at route selection since no routes are seeded
-    assertNotEquals(res.headers.get("X-Cache"), "HIT");
-    assertEquals(bodyText.includes("Should not return for stream"), false);
-  } finally {
-    await cleanup();
-  }
-}});
+      const res = await fetch(`${SUPABASE_URL}/functions/v1/invoke`, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          "x-api-key": apiKey,
+        },
+        body: JSON.stringify({
+          task_key: `${TEST_PREFIX}task`,
+          messages,
+          stream: true,
+        }),
+      });
+
+      // Consume response body
+      const bodyText = await res.text();
+
+      // Streaming bypasses cache — should NOT return the cached content
+      // Will fail at route selection since no routes are seeded
+      assertNotEquals(res.headers.get("X-Cache"), "HIT");
+      assertEquals(bodyText.includes("Should not return for stream"), false);
+    } finally {
+      await cleanup();
+    }
+  },
+});

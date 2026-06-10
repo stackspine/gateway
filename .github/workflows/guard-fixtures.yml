@@ -9,20 +9,8 @@ name: Public-Repo-Guard Fixtures
 on:
   push:
     branches: [main]
-    paths:
-      - "gateway-oss/scripts/guard.sh"
-      - "gateway-oss/scripts/run-guard-fixtures.sh"
-      - "gateway-oss/.github/workflows/public-repo-guard.yml"
-      - "gateway-oss/.github/workflows/guard-fixtures.yml"
-      - "gateway-oss/tests/fixtures/public-repo-guard/**"
   pull_request:
     branches: [main]
-    paths:
-      - "gateway-oss/scripts/guard.sh"
-      - "gateway-oss/scripts/run-guard-fixtures.sh"
-      - "gateway-oss/.github/workflows/public-repo-guard.yml"
-      - "gateway-oss/.github/workflows/guard-fixtures.yml"
-      - "gateway-oss/tests/fixtures/public-repo-guard/**"
 
 permissions:
   contents: read
@@ -31,12 +19,18 @@ jobs:
   fixtures:
     name: Run guard fixture library
     runs-on: ubuntu-latest
-    defaults:
-      run:
-        working-directory: gateway-oss
     steps:
       - uses: actions/checkout@v4
       - name: Install ripgrep
         run: sudo apt-get update && sudo apt-get install -y ripgrep
+      - name: Resolve OSS root
+        id: root
+        run: |
+          if [ -d gateway-oss ]; then
+            echo "root=gateway-oss" >> "$GITHUB_OUTPUT"
+          else
+            echo "root=." >> "$GITHUB_OUTPUT"
+          fi
       - name: Validate fixtures
+        working-directory: ${{ steps.root.outputs.root }}
         run: bash scripts/run-guard-fixtures.sh

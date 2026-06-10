@@ -9,12 +9,12 @@ import { getGcpAccessToken } from "./gcp-jwt.ts";
 import { getIbmIamToken } from "./ibm-iam.ts";
 import { parseOciCredentials, signOciRequest } from "./oci-sign.ts";
 import {
-  PROVIDER_MODALITY,
   callEmbedding,
   callImage,
-  callVoiceTTS,
-  callVoiceSTT,
   callSearch,
+  callVoiceSTT,
+  callVoiceTTS,
+  PROVIDER_MODALITY,
 } from "./modalities.ts";
 
 /**
@@ -31,11 +31,23 @@ import {
  *   - `ibm_watsonx`  : IBM Cloud IAM token exchange (text/chat generation)
  *   - `oracle_oci`   : OCI Signature v1 request signing (Generative AI inference)
  */
-export const providerEndpoints: Record<string, { url: string; authHeader: string }> = {
+export const providerEndpoints: Record<
+  string,
+  { url: string; authHeader: string }
+> = {
   // ── Native non-OpenAI-compatible (custom request/response handling) ────
-  openai: { url: "https://api.openai.com/v1/chat/completions", authHeader: "Authorization" },
-  anthropic: { url: "https://api.anthropic.com/v1/messages", authHeader: "x-api-key" },
-  google: { url: "https://generativelanguage.googleapis.com/v1beta/models", authHeader: "x-goog-api-key" },
+  openai: {
+    url: "https://api.openai.com/v1/chat/completions",
+    authHeader: "Authorization",
+  },
+  anthropic: {
+    url: "https://api.anthropic.com/v1/messages",
+    authHeader: "x-api-key",
+  },
+  google: {
+    url: "https://generativelanguage.googleapis.com/v1beta/models",
+    authHeader: "x-goog-api-key",
+  },
   aws_bedrock: { url: "", authHeader: "Authorization" }, // base_url=bedrock://{region}
   azure_openai: { url: "", authHeader: "api-key" }, // base_url=full Azure deployment URL
   google_vertex: { url: "", authHeader: "Authorization" }, // base_url=vertex://{project}/{region}; api_key=service-account JSON
@@ -43,72 +55,235 @@ export const providerEndpoints: Record<string, { url: string; authHeader: string
   oracle_oci: { url: "", authHeader: "Authorization" }, // base_url=oci://{compartment_ocid}; api_key=tenancy:user:fingerprint:region:base64_pkcs8_key
 
   // ── Frontier labs (OpenAI-compatible) ──────────────────────────────────
-  xai: { url: "https://api.x.ai/v1/chat/completions", authHeader: "Authorization" },
-  ai21: { url: "https://api.ai21.com/studio/v1/chat/completions", authHeader: "Authorization" },
-  cohere: { url: "https://api.cohere.com/compatibility/v1/chat/completions", authHeader: "Authorization" },
-  mistral: { url: "https://api.mistral.ai/v1/chat/completions", authHeader: "Authorization" },
-  deepseek: { url: "https://api.deepseek.com/chat/completions", authHeader: "Authorization" },
-  perplexity: { url: "https://api.perplexity.ai/chat/completions", authHeader: "Authorization" },
+  xai: {
+    url: "https://api.x.ai/v1/chat/completions",
+    authHeader: "Authorization",
+  },
+  ai21: {
+    url: "https://api.ai21.com/studio/v1/chat/completions",
+    authHeader: "Authorization",
+  },
+  cohere: {
+    url: "https://api.cohere.com/compatibility/v1/chat/completions",
+    authHeader: "Authorization",
+  },
+  mistral: {
+    url: "https://api.mistral.ai/v1/chat/completions",
+    authHeader: "Authorization",
+  },
+  deepseek: {
+    url: "https://api.deepseek.com/chat/completions",
+    authHeader: "Authorization",
+  },
+  perplexity: {
+    url: "https://api.perplexity.ai/chat/completions",
+    authHeader: "Authorization",
+  },
 
   // ── Lovable AI Gateway ─────────────────────────────────────────────────
-  lovable: { url: "https://ai.gateway.lovable.dev/v1/chat/completions", authHeader: "Authorization" },
+  lovable: {
+    url: "https://ai.gateway.lovable.dev/v1/chat/completions",
+    authHeader: "Authorization",
+  },
 
   // ── Inference hosts ────────────────────────────────────────────────────
-  groq: { url: "https://api.groq.com/openai/v1/chat/completions", authHeader: "Authorization" },
-  together: { url: "https://api.together.xyz/v1/chat/completions", authHeader: "Authorization" },
-  fireworks: { url: "https://api.fireworks.ai/inference/v1/chat/completions", authHeader: "Authorization" },
-  anyscale: { url: "https://api.endpoints.anyscale.com/v1/chat/completions", authHeader: "Authorization" },
-  deepinfra: { url: "https://api.deepinfra.com/v1/openai/chat/completions", authHeader: "Authorization" },
-  octoai: { url: "https://text.octoai.run/v1/chat/completions", authHeader: "Authorization" },
-  runpod: { url: "https://api.runpod.ai/v2/openai/v1/chat/completions", authHeader: "Authorization" },
-  novita: { url: "https://api.novita.ai/v3/openai/chat/completions", authHeader: "Authorization" },
-  lepton: { url: "https://api.lepton.ai/api/v1/chat/completions", authHeader: "Authorization" },
-  sambanova: { url: "https://api.sambanova.ai/v1/chat/completions", authHeader: "Authorization" },
-  cerebras: { url: "https://api.cerebras.ai/v1/chat/completions", authHeader: "Authorization" },
-  lambda: { url: "https://api.lambdalabs.com/v1/chat/completions", authHeader: "Authorization" },
-  hyperbolic: { url: "https://api.hyperbolic.xyz/v1/chat/completions", authHeader: "Authorization" },
-  nebius: { url: "https://api.studio.nebius.ai/v1/chat/completions", authHeader: "Authorization" },
-  siliconflow: { url: "https://api.siliconflow.cn/v1/chat/completions", authHeader: "Authorization" },
-  infermatic: { url: "https://api.totalgpt.ai/v1/chat/completions", authHeader: "Authorization" },
-  kluster: { url: "https://api.kluster.ai/v1/chat/completions", authHeader: "Authorization" },
-  nscale: { url: "https://inference.api.nscale.com/v1/chat/completions", authHeader: "Authorization" },
-  featherless: { url: "https://api.featherless.ai/v1/chat/completions", authHeader: "Authorization" },
-  chutes: { url: "https://llm.chutes.ai/v1/chat/completions", authHeader: "Authorization" },
-  crusoe: { url: "https://api.crusoe.ai/v1/chat/completions", authHeader: "Authorization" },
-  atoma: { url: "https://api.atoma.network/v1/chat/completions", authHeader: "Authorization" },
-  friendliai: { url: "https://inference.friendli.ai/v1/chat/completions", authHeader: "Authorization" },
+  groq: {
+    url: "https://api.groq.com/openai/v1/chat/completions",
+    authHeader: "Authorization",
+  },
+  together: {
+    url: "https://api.together.xyz/v1/chat/completions",
+    authHeader: "Authorization",
+  },
+  fireworks: {
+    url: "https://api.fireworks.ai/inference/v1/chat/completions",
+    authHeader: "Authorization",
+  },
+  anyscale: {
+    url: "https://api.endpoints.anyscale.com/v1/chat/completions",
+    authHeader: "Authorization",
+  },
+  deepinfra: {
+    url: "https://api.deepinfra.com/v1/openai/chat/completions",
+    authHeader: "Authorization",
+  },
+  octoai: {
+    url: "https://text.octoai.run/v1/chat/completions",
+    authHeader: "Authorization",
+  },
+  runpod: {
+    url: "https://api.runpod.ai/v2/openai/v1/chat/completions",
+    authHeader: "Authorization",
+  },
+  novita: {
+    url: "https://api.novita.ai/v3/openai/chat/completions",
+    authHeader: "Authorization",
+  },
+  lepton: {
+    url: "https://api.lepton.ai/api/v1/chat/completions",
+    authHeader: "Authorization",
+  },
+  sambanova: {
+    url: "https://api.sambanova.ai/v1/chat/completions",
+    authHeader: "Authorization",
+  },
+  cerebras: {
+    url: "https://api.cerebras.ai/v1/chat/completions",
+    authHeader: "Authorization",
+  },
+  lambda: {
+    url: "https://api.lambdalabs.com/v1/chat/completions",
+    authHeader: "Authorization",
+  },
+  hyperbolic: {
+    url: "https://api.hyperbolic.xyz/v1/chat/completions",
+    authHeader: "Authorization",
+  },
+  nebius: {
+    url: "https://api.studio.nebius.ai/v1/chat/completions",
+    authHeader: "Authorization",
+  },
+  siliconflow: {
+    url: "https://api.siliconflow.cn/v1/chat/completions",
+    authHeader: "Authorization",
+  },
+  infermatic: {
+    url: "https://api.totalgpt.ai/v1/chat/completions",
+    authHeader: "Authorization",
+  },
+  kluster: {
+    url: "https://api.kluster.ai/v1/chat/completions",
+    authHeader: "Authorization",
+  },
+  nscale: {
+    url: "https://inference.api.nscale.com/v1/chat/completions",
+    authHeader: "Authorization",
+  },
+  featherless: {
+    url: "https://api.featherless.ai/v1/chat/completions",
+    authHeader: "Authorization",
+  },
+  chutes: {
+    url: "https://llm.chutes.ai/v1/chat/completions",
+    authHeader: "Authorization",
+  },
+  crusoe: {
+    url: "https://api.crusoe.ai/v1/chat/completions",
+    authHeader: "Authorization",
+  },
+  atoma: {
+    url: "https://api.atoma.network/v1/chat/completions",
+    authHeader: "Authorization",
+  },
+  friendliai: {
+    url: "https://inference.friendli.ai/v1/chat/completions",
+    authHeader: "Authorization",
+  },
 
   // ── Open-source self-hosted (base_url override is REQUIRED in production) ─
-  huggingface: { url: "https://api-inference.huggingface.co/v1/chat/completions", authHeader: "Authorization" },
-  ollama: { url: "http://localhost:11434/v1/chat/completions", authHeader: "Authorization" },
-  vllm: { url: "http://localhost:8000/v1/chat/completions", authHeader: "Authorization" },
-  tgi: { url: "http://localhost:8080/v1/chat/completions", authHeader: "Authorization" },
-  lmstudio: { url: "http://localhost:1234/v1/chat/completions", authHeader: "Authorization" },
-  llamacpp: { url: "http://localhost:8080/v1/chat/completions", authHeader: "Authorization" },
-  openllm: { url: "http://localhost:3000/v1/chat/completions", authHeader: "Authorization" },
-  tabbyapi: { url: "http://localhost:5000/v1/chat/completions", authHeader: "Authorization" },
+  huggingface: {
+    url: "https://api-inference.huggingface.co/v1/chat/completions",
+    authHeader: "Authorization",
+  },
+  ollama: {
+    url: "http://localhost:11434/v1/chat/completions",
+    authHeader: "Authorization",
+  },
+  vllm: {
+    url: "http://localhost:8000/v1/chat/completions",
+    authHeader: "Authorization",
+  },
+  tgi: {
+    url: "http://localhost:8080/v1/chat/completions",
+    authHeader: "Authorization",
+  },
+  lmstudio: {
+    url: "http://localhost:1234/v1/chat/completions",
+    authHeader: "Authorization",
+  },
+  llamacpp: {
+    url: "http://localhost:8080/v1/chat/completions",
+    authHeader: "Authorization",
+  },
+  openllm: {
+    url: "http://localhost:3000/v1/chat/completions",
+    authHeader: "Authorization",
+  },
+  tabbyapi: {
+    url: "http://localhost:5000/v1/chat/completions",
+    authHeader: "Authorization",
+  },
 
   // ── Chinese cloud LLMs (OpenAI-compatible mode) ───────────────────────
-  alibaba_dashscope: { url: "https://dashscope.aliyuncs.com/compatible-mode/v1/chat/completions", authHeader: "Authorization" },
-  tencent_hunyuan: { url: "https://api.hunyuan.cloud.tencent.com/v1/chat/completions", authHeader: "Authorization" },
-  baidu_ernie: { url: "https://qianfan.baidubce.com/v2/chat/completions", authHeader: "Authorization" },
-  zhipu_glm: { url: "https://open.bigmodel.cn/api/paas/v4/chat/completions", authHeader: "Authorization" },
-  moonshot: { url: "https://api.moonshot.cn/v1/chat/completions", authHeader: "Authorization" },
-  minimax: { url: "https://api.minimax.chat/v1/text/chatcompletion_v2", authHeader: "Authorization" },
-  stepfun: { url: "https://api.stepfun.com/v1/chat/completions", authHeader: "Authorization" },
-  yi_01ai: { url: "https://api.lingyiwanwu.com/v1/chat/completions", authHeader: "Authorization" },
+  alibaba_dashscope: {
+    url: "https://dashscope.aliyuncs.com/compatible-mode/v1/chat/completions",
+    authHeader: "Authorization",
+  },
+  tencent_hunyuan: {
+    url: "https://api.hunyuan.cloud.tencent.com/v1/chat/completions",
+    authHeader: "Authorization",
+  },
+  baidu_ernie: {
+    url: "https://qianfan.baidubce.com/v2/chat/completions",
+    authHeader: "Authorization",
+  },
+  zhipu_glm: {
+    url: "https://open.bigmodel.cn/api/paas/v4/chat/completions",
+    authHeader: "Authorization",
+  },
+  moonshot: {
+    url: "https://api.moonshot.cn/v1/chat/completions",
+    authHeader: "Authorization",
+  },
+  minimax: {
+    url: "https://api.minimax.chat/v1/text/chatcompletion_v2",
+    authHeader: "Authorization",
+  },
+  stepfun: {
+    url: "https://api.stepfun.com/v1/chat/completions",
+    authHeader: "Authorization",
+  },
+  yi_01ai: {
+    url: "https://api.lingyiwanwu.com/v1/chat/completions",
+    authHeader: "Authorization",
+  },
 
   // ── Specialty / enterprise (OpenAI-compatible) ────────────────────────
-  writer: { url: "https://api.writer.com/v1/chat", authHeader: "Authorization" },
-  databricks: { url: "https://workspace.cloud.databricks.com/serving-endpoints/chat/completions", authHeader: "Authorization" },
-  predibase: { url: "https://serving.app.predibase.com/v1/chat/completions", authHeader: "Authorization" },
-  baseten: { url: "https://app.baseten.co/v1/chat/completions", authHeader: "Authorization" },
+  writer: {
+    url: "https://api.writer.com/v1/chat",
+    authHeader: "Authorization",
+  },
+  databricks: {
+    url:
+      "https://workspace.cloud.databricks.com/serving-endpoints/chat/completions",
+    authHeader: "Authorization",
+  },
+  predibase: {
+    url: "https://serving.app.predibase.com/v1/chat/completions",
+    authHeader: "Authorization",
+  },
+  baseten: {
+    url: "https://app.baseten.co/v1/chat/completions",
+    authHeader: "Authorization",
+  },
 
   // ── Aggregator routers (passthrough — for migration scenarios) ────────
-  openrouter: { url: "https://openrouter.ai/api/v1/chat/completions", authHeader: "Authorization" },
-  requesty: { url: "https://router.requesty.ai/v1/chat/completions", authHeader: "Authorization" },
-  portkey: { url: "https://api.portkey.ai/v1/chat/completions", authHeader: "Authorization" },
-  litellm: { url: "http://localhost:4000/v1/chat/completions", authHeader: "Authorization" },
+  openrouter: {
+    url: "https://openrouter.ai/api/v1/chat/completions",
+    authHeader: "Authorization",
+  },
+  requesty: {
+    url: "https://router.requesty.ai/v1/chat/completions",
+    authHeader: "Authorization",
+  },
+  portkey: {
+    url: "https://api.portkey.ai/v1/chat/completions",
+    authHeader: "Authorization",
+  },
+  litellm: {
+    url: "http://localhost:4000/v1/chat/completions",
+    authHeader: "Authorization",
+  },
 
   // ── Bring-your-own / catch-all ────────────────────────────────────────
   custom_http: { url: "", authHeader: "Authorization" },
@@ -126,18 +301,32 @@ export async function callProvider(
   maxTokens: number | null,
   temperature: number | null,
   stream: boolean,
-  lovableApiKey: string | undefined
-): Promise<{ ok: boolean; status: number; data?: unknown; errorText?: string; response?: Response }> {
-  const providerConfig = providerEndpoints[provider.type] || providerEndpoints.openai;
+  lovableApiKey: string | undefined,
+): Promise<
+  {
+    ok: boolean;
+    status: number;
+    data?: unknown;
+    errorText?: string;
+    response?: Response;
+  }
+> {
+  const providerConfig = providerEndpoints[provider.type] ||
+    providerEndpoints.openai;
   const baseUrl = provider.base_url || providerConfig.url;
 
-  let providerApiKey = (provider as Record<string, unknown>).api_key || provider.api_key_encrypted;
+  let providerApiKey = (provider as Record<string, unknown>).api_key ||
+    provider.api_key_encrypted;
   if (provider.type === "lovable" && lovableApiKey) {
     providerApiKey = lovableApiKey;
   }
 
   if (!providerApiKey) {
-    return { ok: false, status: 500, errorText: "Provider API key not configured" };
+    return {
+      ok: false,
+      status: 500,
+      errorText: "Provider API key not configured",
+    };
   }
 
   // ── Phase 4: Non-chat modality dispatch ───────────────────────────────
@@ -147,19 +336,44 @@ export async function callProvider(
   const modality = PROVIDER_MODALITY[provider.type];
   if (modality) {
     if (modality === "embedding") {
-      return await callEmbedding(provider, modelProfile, fullMessages, providerApiKey as string);
+      return await callEmbedding(
+        provider,
+        modelProfile,
+        fullMessages,
+        providerApiKey as string,
+      );
     }
     if (modality === "image") {
-      return await callImage(provider, modelProfile, fullMessages, providerApiKey as string);
+      return await callImage(
+        provider,
+        modelProfile,
+        fullMessages,
+        providerApiKey as string,
+      );
     }
     if (modality === "voice_tts") {
-      return await callVoiceTTS(provider, modelProfile, fullMessages, providerApiKey as string);
+      return await callVoiceTTS(
+        provider,
+        modelProfile,
+        fullMessages,
+        providerApiKey as string,
+      );
     }
     if (modality === "voice_stt") {
-      return await callVoiceSTT(provider, modelProfile, fullMessages, providerApiKey as string);
+      return await callVoiceSTT(
+        provider,
+        modelProfile,
+        fullMessages,
+        providerApiKey as string,
+      );
     }
     if (modality === "search") {
-      return await callSearch(provider, modelProfile, fullMessages, providerApiKey as string);
+      return await callSearch(
+        provider,
+        modelProfile,
+        fullMessages,
+        providerApiKey as string,
+      );
     }
   }
 
@@ -272,7 +486,11 @@ export async function callProvider(
     const data = await response.json();
     return { ok: true, status: 200, data };
   } catch (error) {
-    return { ok: false, status: 500, errorText: error instanceof Error ? error.message : "Network error" };
+    return {
+      ok: false,
+      status: 500,
+      errorText: error instanceof Error ? error.message : "Network error",
+    };
   }
 }
 
@@ -299,7 +517,15 @@ async function callBedrock(
   systemPrompt: string | null,
   maxTokens: number | null,
   apiKey: string,
-): Promise<{ ok: boolean; status: number; data?: unknown; errorText?: string; response?: Response }> {
+): Promise<
+  {
+    ok: boolean;
+    status: number;
+    data?: unknown;
+    errorText?: string;
+    response?: Response;
+  }
+> {
   try {
     const baseUrl = provider.base_url || "";
     if (!baseUrl.startsWith("bedrock://")) {
@@ -312,7 +538,11 @@ async function callBedrock(
     }
     const region = baseUrl.replace("bedrock://", "").trim();
     if (!region) {
-      return { ok: false, status: 500, errorText: "Bedrock region missing in base_url" };
+      return {
+        ok: false,
+        status: 500,
+        errorText: "Bedrock region missing in base_url",
+      };
     }
 
     const modelId = modelProfile.provider_model_name;
@@ -321,12 +551,15 @@ async function callBedrock(
       return {
         ok: false,
         status: 501,
-        errorText: `Bedrock model family not yet supported: ${modelId}. Currently only anthropic.* models are wired.`,
+        errorText:
+          `Bedrock model family not yet supported: ${modelId}. Currently only anthropic.* models are wired.`,
       };
     }
 
     const creds = parseAwsCredentials(apiKey);
-    const url = `https://bedrock-runtime.${region}.amazonaws.com/model/${encodeURIComponent(modelId)}/invoke`;
+    const url = `https://bedrock-runtime.${region}.amazonaws.com/model/${
+      encodeURIComponent(modelId)
+    }/invoke`;
 
     const body = JSON.stringify({
       anthropic_version: "bedrock-2023-05-31",
@@ -344,10 +577,17 @@ async function callBedrock(
       method: "POST",
       url,
       body,
-      headers: { "content-type": "application/json", accept: "application/json" },
+      headers: {
+        "content-type": "application/json",
+        accept: "application/json",
+      },
     });
 
-    const response = await fetch(url, { method: "POST", headers: signedHeaders, body });
+    const response = await fetch(url, {
+      method: "POST",
+      headers: signedHeaders,
+      body,
+    });
     if (!response.ok) {
       const errorText = await response.text();
       return { ok: false, status: response.status, errorText };
@@ -376,7 +616,8 @@ async function callBedrock(
       usage: {
         prompt_tokens: raw.usage?.input_tokens ?? 0,
         completion_tokens: raw.usage?.output_tokens ?? 0,
-        total_tokens: (raw.usage?.input_tokens ?? 0) + (raw.usage?.output_tokens ?? 0),
+        total_tokens: (raw.usage?.input_tokens ?? 0) +
+          (raw.usage?.output_tokens ?? 0),
       },
     };
 
@@ -411,7 +652,15 @@ async function callAzure(
   temperature: number | null,
   stream: boolean,
   apiKey: string,
-): Promise<{ ok: boolean; status: number; data?: unknown; errorText?: string; response?: Response }> {
+): Promise<
+  {
+    ok: boolean;
+    status: number;
+    data?: unknown;
+    errorText?: string;
+    response?: Response;
+  }
+> {
   try {
     if (!baseUrl || !baseUrl.includes("api-version=")) {
       return {
@@ -478,7 +727,15 @@ async function callVertex(
   systemPrompt: string | null,
   maxTokens: number | null,
   apiKey: string,
-): Promise<{ ok: boolean; status: number; data?: unknown; errorText?: string; response?: Response }> {
+): Promise<
+  {
+    ok: boolean;
+    status: number;
+    data?: unknown;
+    errorText?: string;
+    response?: Response;
+  }
+> {
   try {
     const baseUrl = provider.base_url || "";
     if (!baseUrl.startsWith("vertex://")) {
@@ -492,7 +749,11 @@ async function callVertex(
     const stripped = baseUrl.replace("vertex://", "");
     const [projectId, region] = stripped.split("/");
     if (!projectId || !region) {
-      return { ok: false, status: 500, errorText: "Vertex base_url must include both project and region" };
+      return {
+        ok: false,
+        status: 500,
+        errorText: "Vertex base_url must include both project and region",
+      };
     }
 
     const modelId = modelProfile.provider_model_name;
@@ -500,13 +761,16 @@ async function callVertex(
       return {
         ok: false,
         status: 501,
-        errorText: `Vertex model family not yet supported: ${modelId}. Currently only claude-* publisher models are wired. Gemini models should use the 'google' provider type.`,
+        errorText:
+          `Vertex model family not yet supported: ${modelId}. Currently only claude-* publisher models are wired. Gemini models should use the 'google' provider type.`,
       };
     }
 
     const accessToken = await getGcpAccessToken(apiKey);
     const url =
-      `https://${region}-aiplatform.googleapis.com/v1/projects/${projectId}/locations/${region}/publishers/anthropic/models/${encodeURIComponent(modelId)}:rawPredict`;
+      `https://${region}-aiplatform.googleapis.com/v1/projects/${projectId}/locations/${region}/publishers/anthropic/models/${
+        encodeURIComponent(modelId)
+      }:rawPredict`;
 
     const body = JSON.stringify({
       anthropic_version: "vertex-2023-10-16",
@@ -550,7 +814,8 @@ async function callVertex(
       usage: {
         prompt_tokens: raw.usage?.input_tokens ?? 0,
         completion_tokens: raw.usage?.output_tokens ?? 0,
-        total_tokens: (raw.usage?.input_tokens ?? 0) + (raw.usage?.output_tokens ?? 0),
+        total_tokens: (raw.usage?.input_tokens ?? 0) +
+          (raw.usage?.output_tokens ?? 0),
       },
     };
 
@@ -586,7 +851,15 @@ async function callWatsonx(
   maxTokens: number | null,
   temperature: number | null,
   apiKey: string,
-): Promise<{ ok: boolean; status: number; data?: unknown; errorText?: string; response?: Response }> {
+): Promise<
+  {
+    ok: boolean;
+    status: number;
+    data?: unknown;
+    errorText?: string;
+    response?: Response;
+  }
+> {
   try {
     const baseUrl = provider.base_url || "";
     const sep = baseUrl.indexOf("|");
@@ -601,7 +874,11 @@ async function callWatsonx(
     const regionHost = baseUrl.slice(0, sep).replace(/\/$/, "");
     const projectId = baseUrl.slice(sep + 1).trim();
     if (!regionHost || !projectId) {
-      return { ok: false, status: 500, errorText: "watsonx base_url missing region or project_id" };
+      return {
+        ok: false,
+        status: 500,
+        errorText: "watsonx base_url missing region or project_id",
+      };
     }
 
     const iamToken = await getIbmIamToken(apiKey);
@@ -611,7 +888,9 @@ async function callWatsonx(
     const prefix = systemPrompt ? `System: ${systemPrompt}\n\n` : "";
     const turns = fullMessages
       .filter((m) => m.role !== "system")
-      .map((m) => `${m.role === "assistant" ? "Assistant" : "User"}: ${m.content}`)
+      .map((m) =>
+        `${m.role === "assistant" ? "Assistant" : "User"}: ${m.content}`
+      )
       .join("\n\n");
     const prompt = `${prefix}${turns}\n\nAssistant:`;
 
@@ -703,7 +982,15 @@ async function callOci(
   maxTokens: number | null,
   temperature: number | null,
   apiKey: string,
-): Promise<{ ok: boolean; status: number; data?: unknown; errorText?: string; response?: Response }> {
+): Promise<
+  {
+    ok: boolean;
+    status: number;
+    data?: unknown;
+    errorText?: string;
+    response?: Response;
+  }
+> {
   try {
     const baseUrl = provider.base_url || "";
     if (!baseUrl.startsWith("oci://")) {
@@ -716,26 +1003,39 @@ async function callOci(
     }
     const compartmentId = baseUrl.replace("oci://", "").trim();
     if (!compartmentId) {
-      return { ok: false, status: 500, errorText: "OCI compartment OCID missing in base_url" };
+      return {
+        ok: false,
+        status: 500,
+        errorText: "OCI compartment OCID missing in base_url",
+      };
     }
 
     const creds = parseOciCredentials(apiKey);
-    const url = `https://inference.generativeai.${creds.region}.oci.oraclecloud.com/20231130/actions/chat`;
+    const url =
+      `https://inference.generativeai.${creds.region}.oci.oraclecloud.com/20231130/actions/chat`;
 
     // OCI Generative AI generic chat request shape (works for cohere.* and meta.*)
     const messages = systemPrompt
-      ? [{ role: "SYSTEM", content: [{ type: "TEXT", text: systemPrompt }] }, ...fullMessages.filter((m) => m.role !== "system").map((m) => ({
+      ? [
+        { role: "SYSTEM", content: [{ type: "TEXT", text: systemPrompt }] },
+        ...fullMessages.filter((m) => m.role !== "system").map((m) => ({
           role: m.role === "assistant" ? "ASSISTANT" : "USER",
           content: [{ type: "TEXT", text: m.content }],
-        }))]
+        })),
+      ]
       : fullMessages.map((m) => ({
-          role: m.role === "assistant" ? "ASSISTANT" : (m.role === "system" ? "SYSTEM" : "USER"),
-          content: [{ type: "TEXT", text: m.content }],
-        }));
+        role: m.role === "assistant"
+          ? "ASSISTANT"
+          : (m.role === "system" ? "SYSTEM" : "USER"),
+        content: [{ type: "TEXT", text: m.content }],
+      }));
 
     const body = JSON.stringify({
       compartmentId,
-      servingMode: { servingType: "ON_DEMAND", modelId: modelProfile.provider_model_name },
+      servingMode: {
+        servingType: "ON_DEMAND",
+        modelId: modelProfile.provider_model_name,
+      },
       chatRequest: {
         apiFormat: "GENERIC",
         messages,
@@ -758,11 +1058,17 @@ async function callOci(
           message?: { content?: Array<{ text?: string }> };
           finishReason?: string;
         }>;
-        usage?: { promptTokens?: number; completionTokens?: number; totalTokens?: number };
+        usage?: {
+          promptTokens?: number;
+          completionTokens?: number;
+          totalTokens?: number;
+        };
       };
     };
     const choice = raw.chatResponse?.choices?.[0];
-    const text = (choice?.message?.content || []).map((c) => c.text || "").join("");
+    const text = (choice?.message?.content || []).map((c) => c.text || "").join(
+      "",
+    );
 
     const normalized = {
       id: `oci-${Date.now()}`,

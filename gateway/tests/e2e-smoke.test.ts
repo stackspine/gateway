@@ -1,6 +1,6 @@
 /**
  * E2E Smoke Tests for the Invoke Control Plane
- * 
+ *
  * Seeds real data via the test-invoke edge function (which has service role access),
  * then exercises the full invoke lifecycle:
  * - API key authentication (SHA-256 hashing)
@@ -13,7 +13,11 @@
  * - Call log creation
  */
 import "https://deno.land/std@0.224.0/dotenv/load.ts";
-import { assertEquals, assertExists, assert } from "https://deno.land/std@0.224.0/assert/mod.ts";
+import {
+  assert,
+  assertEquals,
+  assertExists,
+} from "https://deno.land/std@0.224.0/assert/mod.ts";
 
 const SUPABASE_URL = Deno.env.get("VITE_SUPABASE_URL")!;
 const SUPABASE_ANON_KEY = Deno.env.get("VITE_SUPABASE_PUBLISHABLE_KEY")!;
@@ -36,7 +40,15 @@ interface SeedResult {
   apiKeyRaw: string;
 }
 
-async function seedTestData(opts?: { budgetUsd?: number; consecutiveFailures?: number; complianceRules?: Array<{ rule_type: string; action: string; config: Record<string, unknown> }> }): Promise<SeedResult> {
+async function seedTestData(
+  opts?: {
+    budgetUsd?: number;
+    consecutiveFailures?: number;
+    complianceRules?: Array<
+      { rule_type: string; action: string; config: Record<string, unknown> }
+    >;
+  },
+): Promise<SeedResult> {
   const response = await fetch(TEST_INVOKE_URL, {
     method: "POST",
     headers: {
@@ -96,7 +108,10 @@ Deno.test("E2E: Valid API key authenticates and reaches provider call", async ()
     assert(response.status !== 429, `Should not be 429: ${body}`);
     assert(response.status !== 402, `Should not be 402: ${body}`);
     // 500/502 = reached provider call but failed (expected with httpbin test provider)
-    assert([200, 500, 502].includes(response.status), `Expected 200/500/502, got ${response.status}: ${body}`);
+    assert(
+      [200, 500, 502].includes(response.status),
+      `Expected 200/500/502, got ${response.status}: ${body}`,
+    );
   } finally {
     await cleanupTestData(seed.orgId);
   }
@@ -156,8 +171,14 @@ Deno.test("E2E: X-API-Version header present on all response codes", async () =>
   // Test on 401 (no x-api-key)
   const r1 = await fetch(INVOKE_URL, {
     method: "POST",
-    headers: { "Content-Type": "application/json", "apikey": SUPABASE_ANON_KEY },
-    body: JSON.stringify({ task_key: "x", messages: [{ role: "user", content: "x" }] }),
+    headers: {
+      "Content-Type": "application/json",
+      "apikey": SUPABASE_ANON_KEY,
+    },
+    body: JSON.stringify({
+      task_key: "x",
+      messages: [{ role: "user", content: "x" }],
+    }),
   });
   await r1.text();
   assertEquals(r1.headers.get("X-API-Version"), "1");
@@ -183,12 +204,21 @@ Deno.test("E2E: Usage headers present for free-tier org", async () => {
     // Usage headers are only present on successful (200) responses
     // With httpbin as provider we get 502, so check conditionally
     if (response.status === 200) {
-      assertExists(response.headers.get("X-Usage-Percent"), "X-Usage-Percent should be present");
-      assertExists(response.headers.get("X-Usage-Limit"), "X-Usage-Limit should be present");
+      assertExists(
+        response.headers.get("X-Usage-Percent"),
+        "X-Usage-Percent should be present",
+      );
+      assertExists(
+        response.headers.get("X-Usage-Limit"),
+        "X-Usage-Limit should be present",
+      );
       assertEquals(response.headers.get("X-Usage-Limit"), "1000");
     } else {
       // Even on 500/502, we got past auth + budget + rate limit
-      assert([500, 502].includes(response.status), `Expected 200, 500, or 502, got ${response.status}`);
+      assert(
+        [500, 502].includes(response.status),
+        `Expected 200, 500, or 502, got ${response.status}`,
+      );
     }
   } finally {
     await cleanupTestData(seed.orgId);
@@ -258,7 +288,10 @@ Deno.test("E2E: Topic blocking guardrail blocks request with blocked topic", asy
       },
       body: JSON.stringify({
         task_key: seed.taskKey,
-        messages: [{ role: "user", content: "Tell me about politics and the upcoming election" }],
+        messages: [{
+          role: "user",
+          content: "Tell me about politics and the upcoming election",
+        }],
       }),
     });
     const body = await response.json();
@@ -266,7 +299,11 @@ Deno.test("E2E: Topic blocking guardrail blocks request with blocked topic", asy
     assertEquals(response.status, 400);
     assertEquals(body.code, "COMPLIANCE_VIOLATION");
     assert(body.details?.rule_type === "topic_blocking");
-    assert(body.details?.matches?.some((m: { keyword: string }) => m.keyword === "politics"));
+    assert(
+      body.details?.matches?.some((m: { keyword: string }) =>
+        m.keyword === "politics"
+      ),
+    );
   } finally {
     await cleanupTestData(seed.orgId);
   }
@@ -298,7 +335,10 @@ Deno.test("E2E: Topic blocking guardrail in log mode does NOT block request", as
     // Should NOT be 400 (compliance block) — should pass through to provider
     assert(response.status !== 400, `Log mode should not block: ${body}`);
     // Will be 500/502 because of httpbin test provider, but that's expected
-    assert([200, 500, 502].includes(response.status), `Expected 200/500/502, got ${response.status}: ${body}`);
+    assert(
+      [200, 500, 502].includes(response.status),
+      `Expected 200/500/502, got ${response.status}: ${body}`,
+    );
   } finally {
     await cleanupTestData(seed.orgId);
   }

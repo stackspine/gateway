@@ -28,4 +28,4 @@ jobs:
 
       - name: Run disclosure scanner
         run: bash scripts/scan-disclosure.sh
-        working-directory: gateway-oss
+        working-directory: ${{ hashFiles('gateway-oss/scripts/scan-disclosure.sh') != '' && 'gateway-oss' || '.' }}

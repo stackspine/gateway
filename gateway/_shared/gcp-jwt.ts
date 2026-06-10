@@ -33,7 +33,9 @@ export function parseServiceAccountKey(raw: string): ServiceAccountKey {
 }
 
 function b64url(input: Uint8Array | string): string {
-  const bytes = typeof input === "string" ? new TextEncoder().encode(input) : input;
+  const bytes = typeof input === "string"
+    ? new TextEncoder().encode(input)
+    : input;
   let bin = "";
   for (let i = 0; i < bytes.length; i++) bin += String.fromCharCode(bytes[i]);
   return btoa(bin).replace(/\+/g, "-").replace(/\//g, "_").replace(/=+$/, "");
@@ -54,7 +56,9 @@ async function importPrivateKey(pem: string): Promise<CryptoKey> {
   );
 }
 
-export async function getGcpAccessToken(serviceAccountJson: string): Promise<string> {
+export async function getGcpAccessToken(
+  serviceAccountJson: string,
+): Promise<string> {
   const sa = parseServiceAccountKey(serviceAccountJson);
   const now = Math.floor(Date.now() / 1000);
 
@@ -73,10 +77,16 @@ export async function getGcpAccessToken(serviceAccountJson: string): Promise<str
     exp: now + 3600,
   };
 
-  const signingInput = `${b64url(JSON.stringify(header))}.${b64url(JSON.stringify(claims))}`;
+  const signingInput = `${b64url(JSON.stringify(header))}.${
+    b64url(JSON.stringify(claims))
+  }`;
   const key = await importPrivateKey(sa.private_key);
   const sig = new Uint8Array(
-    await crypto.subtle.sign("RSASSA-PKCS1-v1_5", key, new TextEncoder().encode(signingInput)),
+    await crypto.subtle.sign(
+      "RSASSA-PKCS1-v1_5",
+      key,
+      new TextEncoder().encode(signingInput),
+    ),
   );
   const jwt = `${signingInput}.${b64url(sig)}`;
 
@@ -89,7 +99,9 @@ export async function getGcpAccessToken(serviceAccountJson: string): Promise<str
     }),
   });
   if (!res.ok) {
-    throw new Error(`GCP token exchange failed (${res.status}): ${await res.text()}`);
+    throw new Error(
+      `GCP token exchange failed (${res.status}): ${await res.text()}`,
+    );
   }
   const json = await res.json() as { access_token: string; expires_in: number };
   const expiresAt = now + (json.expires_in || 3600);

@@ -21,7 +21,6 @@
  * see gateway-oss/NOTICE.
  */
 
-
 import type { RouteWithProfile } from "./types.ts";
 
 type Provider = RouteWithProfile["model_profiles"]["providers_with_key"];
@@ -38,7 +37,10 @@ export type ModalityResult = {
 //  Provider → modality map. Used by the dispatcher in providers.ts.
 // ─────────────────────────────────────────────────────────────────────────
 
-export const PROVIDER_MODALITY: Record<string, "embedding" | "image" | "voice_tts" | "voice_stt" | "search"> = {
+export const PROVIDER_MODALITY: Record<
+  string,
+  "embedding" | "image" | "voice_tts" | "voice_stt" | "search"
+> = {
   // Embeddings
   voyage: "embedding",
   jina: "embedding",
@@ -81,7 +83,9 @@ export const PROVIDER_MODALITY: Record<string, "embedding" | "image" | "voice_tt
 };
 
 /** Pull last user-role message text — the canonical "prompt" across modalities. */
-function lastUserPrompt(messages: Array<{ role: string; content: string }>): string {
+function lastUserPrompt(
+  messages: Array<{ role: string; content: string }>,
+): string {
   for (let i = messages.length - 1; i >= 0; i--) {
     if (messages[i].role === "user") return messages[i].content || "";
   }
@@ -128,12 +132,30 @@ function envelope(opts: {
 // ─────────────────────────────────────────────────────────────────────────
 
 const EMBED_ENDPOINTS: Record<string, { url: string; authHeader: string }> = {
-  openai_embed: { url: "https://api.openai.com/v1/embeddings", authHeader: "Authorization" },
-  voyage: { url: "https://api.voyageai.com/v1/embeddings", authHeader: "Authorization" },
-  jina: { url: "https://api.jina.ai/v1/embeddings", authHeader: "Authorization" },
-  cohere_embed: { url: "https://api.cohere.com/v2/embed", authHeader: "Authorization" },
-  mixedbread: { url: "https://api.mixedbread.ai/v1/embeddings", authHeader: "Authorization" },
-  nomic: { url: "https://api-atlas.nomic.ai/v1/embedding/text", authHeader: "Authorization" },
+  openai_embed: {
+    url: "https://api.openai.com/v1/embeddings",
+    authHeader: "Authorization",
+  },
+  voyage: {
+    url: "https://api.voyageai.com/v1/embeddings",
+    authHeader: "Authorization",
+  },
+  jina: {
+    url: "https://api.jina.ai/v1/embeddings",
+    authHeader: "Authorization",
+  },
+  cohere_embed: {
+    url: "https://api.cohere.com/v2/embed",
+    authHeader: "Authorization",
+  },
+  mixedbread: {
+    url: "https://api.mixedbread.ai/v1/embeddings",
+    authHeader: "Authorization",
+  },
+  nomic: {
+    url: "https://api-atlas.nomic.ai/v1/embedding/text",
+    authHeader: "Authorization",
+  },
 };
 
 export async function callEmbedding(
@@ -143,7 +165,13 @@ export async function callEmbedding(
   apiKey: string,
 ): Promise<ModalityResult> {
   const cfg = EMBED_ENDPOINTS[provider.type];
-  if (!cfg) return { ok: false, status: 501, errorText: `Embedding provider not wired: ${provider.type}` };
+  if (!cfg) {
+    return {
+      ok: false,
+      status: 501,
+      errorText: `Embedding provider not wired: ${provider.type}`,
+    };
+  }
   const url = provider.base_url || cfg.url;
   const input = lastUserPrompt(fullMessages);
   const model = modelProfile.provider_model_name;
@@ -151,9 +179,17 @@ export async function callEmbedding(
   // Provider-specific body shapes
   let body: string;
   if (provider.type === "cohere_embed") {
-    body = JSON.stringify({ model, texts: [input], input_type: "search_document" });
+    body = JSON.stringify({
+      model,
+      texts: [input],
+      input_type: "search_document",
+    });
   } else if (provider.type === "nomic") {
-    body = JSON.stringify({ model, texts: [input], task_type: "search_document" });
+    body = JSON.stringify({
+      model,
+      texts: [input],
+      task_type: "search_document",
+    });
   } else {
     body = JSON.stringify({ model, input });
   }
@@ -168,7 +204,11 @@ export async function callEmbedding(
       body,
     });
     if (!response.ok) {
-      return { ok: false, status: response.status, errorText: await response.text() };
+      return {
+        ok: false,
+        status: response.status,
+        errorText: await response.text(),
+      };
     }
     const raw = await response.json() as Record<string, unknown>;
 
@@ -183,13 +223,18 @@ export async function callEmbedding(
     } else if (provider.type === "nomic") {
       const arr = (raw as { embeddings?: number[][] }).embeddings;
       vector = arr?.[0] || [];
-      tokens = (raw as { usage?: { total_tokens?: number } }).usage?.total_tokens ?? 0;
+      tokens =
+        (raw as { usage?: { total_tokens?: number } }).usage?.total_tokens ?? 0;
     } else {
       // OpenAI-shape (openai_embed, voyage, jina, mixedbread)
       const data = (raw as { data?: Array<{ embedding?: number[] }> }).data;
       vector = data?.[0]?.embedding || [];
-      tokens = (raw as { usage?: { total_tokens?: number; prompt_tokens?: number } })
-        .usage?.total_tokens ?? (raw as { usage?: { prompt_tokens?: number } }).usage?.prompt_tokens ?? 0;
+      tokens =
+        (raw as { usage?: { total_tokens?: number; prompt_tokens?: number } })
+          .usage?.total_tokens ??
+          (raw as { usage?: { prompt_tokens?: number } }).usage
+            ?.prompt_tokens ??
+          0;
     }
 
     // Embeddings still bill by tokens
@@ -203,7 +248,11 @@ export async function callEmbedding(
     });
     return { ok: true, status: 200, data };
   } catch (e) {
-    return { ok: false, status: 500, errorText: e instanceof Error ? e.message : "Embedding call failed" };
+    return {
+      ok: false,
+      status: 500,
+      errorText: e instanceof Error ? e.message : "Embedding call failed",
+    };
   }
 }
 
@@ -229,25 +278,41 @@ export async function callImage(
   apiKey: string,
 ): Promise<ModalityResult> {
   const url = provider.base_url || IMAGE_ENDPOINTS[provider.type];
-  if (!url) return { ok: false, status: 501, errorText: `Image provider not wired: ${provider.type}` };
+  if (!url) {
+    return {
+      ok: false,
+      status: 501,
+      errorText: `Image provider not wired: ${provider.type}`,
+    };
+  }
   const prompt = lastUserPrompt(fullMessages);
   const model = modelProfile.provider_model_name;
 
   try {
     let body: string;
-    let headers: Record<string, string> = { "Content-Type": "application/json" };
+    let headers: Record<string, string> = {
+      "Content-Type": "application/json",
+    };
 
     if (provider.type === "dall_e") {
       body = JSON.stringify({ model, prompt, n: 1, size: "1024x1024" });
       headers["Authorization"] = `Bearer ${apiKey}`;
     } else if (provider.type === "ideogram") {
-      body = JSON.stringify({ image_request: { prompt, model, aspect_ratio: "ASPECT_1_1" } });
+      body = JSON.stringify({
+        image_request: { prompt, model, aspect_ratio: "ASPECT_1_1" },
+      });
       headers["Api-Key"] = apiKey;
     } else if (provider.type === "black_forest_labs") {
       body = JSON.stringify({ prompt, width: 1024, height: 1024 });
       headers["x-key"] = apiKey;
     } else if (provider.type === "leonardo") {
-      body = JSON.stringify({ prompt, modelId: model, num_images: 1, width: 1024, height: 1024 });
+      body = JSON.stringify({
+        prompt,
+        modelId: model,
+        num_images: 1,
+        width: 1024,
+        height: 1024,
+      });
       headers["Authorization"] = `Bearer ${apiKey}`;
     } else if (provider.type === "luma") {
       body = JSON.stringify({ prompt, model });
@@ -260,7 +325,11 @@ export async function callImage(
 
     const response = await fetch(url, { method: "POST", headers, body });
     if (!response.ok) {
-      return { ok: false, status: response.status, errorText: await response.text() };
+      return {
+        ok: false,
+        status: response.status,
+        errorText: await response.text(),
+      };
     }
     const raw = await response.json();
 
@@ -268,13 +337,17 @@ export async function callImage(
     const r = raw as Record<string, unknown>;
     let imageRef = "";
     if (Array.isArray((r as { data?: unknown[] }).data)) {
-      const first = (r as { data: Array<Record<string, unknown>> }).data[0] || {};
+      const first = (r as { data: Array<Record<string, unknown>> }).data[0] ||
+        {};
       imageRef = String(first.url || first.b64_json || "");
     } else if (typeof (r as { image?: string }).image === "string") {
       imageRef = (r as { image: string }).image;
     } else if (Array.isArray((r as { images?: unknown[] }).images)) {
-      const first = (r as { images: Array<Record<string, unknown> | string> }).images[0];
-      imageRef = typeof first === "string" ? first : String((first as Record<string, unknown>)?.url || "");
+      const first =
+        (r as { images: Array<Record<string, unknown> | string> }).images[0];
+      imageRef = typeof first === "string"
+        ? first
+        : String((first as Record<string, unknown>)?.url || "");
     } else if (typeof (r as { id?: string }).id === "string") {
       imageRef = `pending:${(r as { id: string }).id}`;
     }
@@ -289,7 +362,11 @@ export async function callImage(
     });
     return { ok: true, status: 200, data };
   } catch (e) {
-    return { ok: false, status: 500, errorText: e instanceof Error ? e.message : "Image call failed" };
+    return {
+      ok: false,
+      status: 500,
+      errorText: e instanceof Error ? e.message : "Image call failed",
+    };
   }
 }
 
@@ -322,7 +399,13 @@ export async function callVoiceTTS(
   apiKey: string,
 ): Promise<ModalityResult> {
   const baseUrl = provider.base_url || TTS_ENDPOINTS[provider.type];
-  if (!baseUrl) return { ok: false, status: 501, errorText: `TTS provider not wired: ${provider.type}` };
+  if (!baseUrl) {
+    return {
+      ok: false,
+      status: 501,
+      errorText: `TTS provider not wired: ${provider.type}`,
+    };
+  }
   const text = lastUserPrompt(fullMessages);
   const model = modelProfile.provider_model_name;
   const voiceId = (modelProfile as { voice_id?: string }).voice_id || "default";
@@ -330,7 +413,9 @@ export async function callVoiceTTS(
   try {
     let url = baseUrl;
     let body: string;
-    const headers: Record<string, string> = { "Content-Type": "application/json" };
+    const headers: Record<string, string> = {
+      "Content-Type": "application/json",
+    };
 
     if (provider.type === "elevenlabs") {
       url = `${baseUrl}/${voiceId}`;
@@ -340,7 +425,11 @@ export async function callVoiceTTS(
       body = JSON.stringify({ model, input: text, voice: voiceId });
       headers["Authorization"] = `Bearer ${apiKey}`;
     } else if (provider.type === "cartesia") {
-      body = JSON.stringify({ model_id: model, transcript: text, voice: { mode: "id", id: voiceId } });
+      body = JSON.stringify({
+        model_id: model,
+        transcript: text,
+        voice: { mode: "id", id: voiceId },
+      });
       headers["X-API-Key"] = apiKey;
       headers["Cartesia-Version"] = "2024-06-10";
     } else {
@@ -351,7 +440,11 @@ export async function callVoiceTTS(
 
     const response = await fetch(url, { method: "POST", headers, body });
     if (!response.ok) {
-      return { ok: false, status: response.status, errorText: await response.text() };
+      return {
+        ok: false,
+        status: response.status,
+        errorText: await response.text(),
+      };
     }
 
     // TTS responses are usually binary audio. We don't decode; we report bytes
@@ -365,11 +458,18 @@ export async function callVoiceTTS(
       text: audioRef,
       units: text.length,
       unitType: "characters",
-      raw: { content_type: response.headers.get("content-type"), bytes: ab.byteLength },
+      raw: {
+        content_type: response.headers.get("content-type"),
+        bytes: ab.byteLength,
+      },
     });
     return { ok: true, status: 200, data };
   } catch (e) {
-    return { ok: false, status: 500, errorText: e instanceof Error ? e.message : "TTS call failed" };
+    return {
+      ok: false,
+      status: 500,
+      errorText: e instanceof Error ? e.message : "TTS call failed",
+    };
   }
 }
 
@@ -380,14 +480,22 @@ export async function callVoiceSTT(
   apiKey: string,
 ): Promise<ModalityResult> {
   const url = provider.base_url || STT_ENDPOINTS[provider.type];
-  if (!url) return { ok: false, status: 501, errorText: `STT provider not wired: ${provider.type}` };
+  if (!url) {
+    return {
+      ok: false,
+      status: 501,
+      errorText: `STT provider not wired: ${provider.type}`,
+    };
+  }
   // STT input is an audio URL passed as the user message text (or a base64 blob in metadata)
   const audioUrl = lastUserPrompt(fullMessages);
   const model = modelProfile.provider_model_name;
 
   try {
     let body: string;
-    const headers: Record<string, string> = { "Content-Type": "application/json" };
+    const headers: Record<string, string> = {
+      "Content-Type": "application/json",
+    };
 
     if (provider.type === "deepgram") {
       body = JSON.stringify({ url: audioUrl });
@@ -404,7 +512,8 @@ export async function callVoiceSTT(
       return {
         ok: false,
         status: 501,
-        errorText: "openai_whisper requires multipart upload — use SDK helper to POST audio file directly",
+        errorText:
+          "openai_whisper requires multipart upload — use SDK helper to POST audio file directly",
       };
     } else {
       body = JSON.stringify({ audio_url: audioUrl });
@@ -413,17 +522,26 @@ export async function callVoiceSTT(
 
     const response = await fetch(url, { method: "POST", headers, body });
     if (!response.ok) {
-      return { ok: false, status: response.status, errorText: await response.text() };
+      return {
+        ok: false,
+        status: response.status,
+        errorText: await response.text(),
+      };
     }
     const raw = await response.json() as Record<string, unknown>;
 
     // Best-effort transcript extraction
-    const transcript =
-      ((raw as { results?: { channels?: Array<{ alternatives?: Array<{ transcript?: string }> }> } })
-        .results?.channels?.[0]?.alternatives?.[0]?.transcript) ||
+    const transcript = ((raw as {
+      results?: {
+        channels?: Array<{ alternatives?: Array<{ transcript?: string }> }>;
+      };
+    })
+      .results?.channels?.[0]?.alternatives?.[0]?.transcript) ||
       ((raw as { text?: string }).text) ||
       ((raw as { transcript?: string }).transcript) ||
-      ((raw as { id?: string }).id ? `pending:${(raw as { id: string }).id}` : "");
+      ((raw as { id?: string }).id
+        ? `pending:${(raw as { id: string }).id}`
+        : "");
 
     // Bill by audio_seconds when provider returns it; otherwise estimate from
     // transcript length / 15 chars per second. Better than nothing.
@@ -442,7 +560,11 @@ export async function callVoiceSTT(
     });
     return { ok: true, status: 200, data };
   } catch (e) {
-    return { ok: false, status: 500, errorText: e instanceof Error ? e.message : "STT call failed" };
+    return {
+      ok: false,
+      status: 500,
+      errorText: e instanceof Error ? e.message : "STT call failed",
+    };
   }
 }
 
@@ -468,7 +590,13 @@ export async function callSearch(
   apiKey: string,
 ): Promise<ModalityResult> {
   const baseUrl = provider.base_url || SEARCH_ENDPOINTS[provider.type];
-  if (!baseUrl) return { ok: false, status: 501, errorText: `Search provider not wired: ${provider.type}` };
+  if (!baseUrl) {
+    return {
+      ok: false,
+      status: 501,
+      errorText: `Search provider not wired: ${provider.type}`,
+    };
+  }
   const query = lastUserPrompt(fullMessages);
   const model = modelProfile.provider_model_name;
 
@@ -476,7 +604,9 @@ export async function callSearch(
     let url = baseUrl;
     let method = "POST";
     let body: string | undefined;
-    const headers: Record<string, string> = { "Content-Type": "application/json" };
+    const headers: Record<string, string> = {
+      "Content-Type": "application/json",
+    };
 
     if (provider.type === "tavily") {
       body = JSON.stringify({ api_key: apiKey, query, max_results: 10 });
@@ -516,21 +646,39 @@ export async function callSearch(
       body: method === "GET" ? undefined : body,
     });
     if (!response.ok) {
-      return { ok: false, status: response.status, errorText: await response.text() };
+      return {
+        ok: false,
+        status: response.status,
+        errorText: await response.text(),
+      };
     }
     const raw = await response.json() as Record<string, unknown>;
 
     // Flatten results to a simple "title — url\nsnippet" markdown
-    const results: Array<{ title?: string; url?: string; snippet?: string; content?: string }> =
-      ((raw as { results?: Array<Record<string, unknown>> }).results as Array<{ title?: string; url?: string; snippet?: string; content?: string }>) ||
-      ((raw as { web?: { results?: Array<Record<string, unknown>> } }).web?.results as Array<{ title?: string; url?: string; snippet?: string; content?: string }>) ||
-      ((raw as { hits?: Array<Record<string, unknown>> }).hits as Array<{ title?: string; url?: string; snippet?: string; content?: string }>) ||
-      ((raw as { data?: Array<Record<string, unknown>> }).data as Array<{ title?: string; url?: string; snippet?: string; content?: string }>) ||
+    const results: Array<
+      { title?: string; url?: string; snippet?: string; content?: string }
+    > = ((raw as { results?: Array<Record<string, unknown>> }).results as Array<
+      { title?: string; url?: string; snippet?: string; content?: string }
+    >) ||
+      ((raw as { web?: { results?: Array<Record<string, unknown>> } }).web
+        ?.results as Array<
+          { title?: string; url?: string; snippet?: string; content?: string }
+        >) ||
+      ((raw as { hits?: Array<Record<string, unknown>> }).hits as Array<
+        { title?: string; url?: string; snippet?: string; content?: string }
+      >) ||
+      ((raw as { data?: Array<Record<string, unknown>> }).data as Array<
+        { title?: string; url?: string; snippet?: string; content?: string }
+      >) ||
       [];
 
     const text = results
       .slice(0, 10)
-      .map((r) => `**${r.title || "(untitled)"}** — ${r.url || ""}\n${r.snippet || r.content || ""}`)
+      .map((r) =>
+        `**${r.title || "(untitled)"}** — ${r.url || ""}\n${
+          r.snippet || r.content || ""
+        }`
+      )
       .join("\n\n");
 
     const data = envelope({
@@ -543,6 +691,10 @@ export async function callSearch(
     });
     return { ok: true, status: 200, data };
   } catch (e) {
-    return { ok: false, status: 500, errorText: e instanceof Error ? e.message : "Search call failed" };
+    return {
+      ok: false,
+      status: 500,
+      errorText: e instanceof Error ? e.message : "Search call failed",
+    };
   }
 }

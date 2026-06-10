@@ -8,7 +8,6 @@
  * see gateway-oss/NOTICE.
  */
 
-
 import { PROVIDER_MODALITY } from "./modalities.ts";
 
 export type Modality =
@@ -80,13 +79,15 @@ export function computeCost(
   if (ut === "audio_seconds") return units * num(profile.cost_per_second);
   if (ut === "searches") return units * num(profile.cost_per_search);
   if (ut === "embedding_tokens") {
-    const rate = num(profile.cost_per_embedding_token) || num(profile.cost_per_input_token);
+    const rate = num(profile.cost_per_embedding_token) ||
+      num(profile.cost_per_input_token);
     return units * rate;
   }
   if (ut === "tokens" || ut === null || ut === undefined) {
     const modality = resolveModality(profile, providerType);
     if (modality === "embedding") {
-      const rate = num(profile.cost_per_embedding_token) || num(profile.cost_per_input_token);
+      const rate = num(profile.cost_per_embedding_token) ||
+        num(profile.cost_per_input_token);
       return (units || inputTokens) * rate;
     }
     return inputTokens * num(profile.cost_per_input_token) +
@@ -115,7 +116,8 @@ export function projectCallCost(
     case "search":
       return num(profile.cost_per_search);
     case "embedding": {
-      const rate = num(profile.cost_per_embedding_token) || num(profile.cost_per_input_token);
+      const rate = num(profile.cost_per_embedding_token) ||
+        num(profile.cost_per_input_token);
       return estimatedInputTokens * rate;
     }
     case "chat":

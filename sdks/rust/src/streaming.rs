@@ -2,7 +2,6 @@ use crate::errors::Error;
 use crate::models::StreamEvent;
 use futures::stream::Stream;
 use reqwest::Response;
-use std::collections::HashMap;
 use std::pin::Pin;
 use std::task::{Context, Poll};
 use tokio::io::{AsyncBufReadExt, BufReader};

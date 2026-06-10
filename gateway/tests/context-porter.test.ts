@@ -5,7 +5,11 @@
  * when messages exceed a model's context window.
  */
 import "https://deno.land/std@0.224.0/dotenv/load.ts";
-import { assertEquals, assert, assertExists } from "https://deno.land/std@0.224.0/assert/mod.ts";
+import {
+  assert,
+  assertEquals,
+  assertExists,
+} from "https://deno.land/std@0.224.0/assert/mod.ts";
 
 const SUPABASE_URL = Deno.env.get("VITE_SUPABASE_URL")!;
 const SUPABASE_ANON_KEY = Deno.env.get("VITE_SUPABASE_PUBLISHABLE_KEY")!;
@@ -24,7 +28,9 @@ interface SeedResult {
   apiKeyRaw: string;
 }
 
-async function seedTestData(opts: Record<string, unknown> = {}): Promise<SeedResult> {
+async function seedTestData(
+  opts: Record<string, unknown> = {},
+): Promise<SeedResult> {
   const response = await fetch(TEST_INVOKE_URL, {
     method: "POST",
     headers: {
@@ -54,7 +60,8 @@ async function cleanupTestData(orgId: string): Promise<void> {
 
 // Generate a long message that exceeds a small context window
 function generateLongMessage(targetChars: number): string {
-  const sentence = "This is a test message for context portability verification. ";
+  const sentence =
+    "This is a test message for context portability verification. ";
   const repeats = Math.ceil(targetChars / sentence.length);
   return sentence.repeat(repeats).slice(0, targetChars);
 }
@@ -81,7 +88,9 @@ Deno.test("Context Porter: Short messages pass through without compression", asy
     });
     const body = await response.text();
     let parsed: Record<string, unknown> = {};
-    try { parsed = JSON.parse(body); } catch { /* ok */ }
+    try {
+      parsed = JSON.parse(body);
+    } catch { /* ok */ }
 
     // Should get past auth — not be blocked
     assert(response.status !== 401, `Should not be 401: ${body}`);
@@ -126,7 +135,9 @@ Deno.test("Context Porter: Large message set triggers compression for small cont
     });
     const body = await response.text();
     let parsed: Record<string, unknown> = {};
-    try { parsed = JSON.parse(body); } catch { /* ok */ }
+    try {
+      parsed = JSON.parse(body);
+    } catch { /* ok */ }
 
     // Should reach provider (not auth/budget blocked)
     assert(response.status !== 401, `Should not be 401: ${body}`);
@@ -134,11 +145,18 @@ Deno.test("Context Porter: Large message set triggers compression for small cont
 
     // The pipeline should have attempted compression
     // With httpbin provider, we'll get 500/502 but that's after context porting ran
-    assert([200, 500, 502].includes(response.status), `Expected 200/500/502, got ${response.status}: ${body}`);
+    assert(
+      [200, 500, 502].includes(response.status),
+      `Expected 200/500/502, got ${response.status}: ${body}`,
+    );
 
     // If context_compressed is in response, verify it was triggered
     if (parsed.context_compressed !== undefined) {
-      assertEquals(parsed.context_compressed, true, "Context should be compressed for small context window");
+      assertEquals(
+        parsed.context_compressed,
+        true,
+        "Context should be compressed for small context window",
+      );
     }
   } finally {
     await cleanupTestData(seed.orgId);
@@ -195,9 +213,12 @@ Deno.test("Context Porter: Session-based compression caches summaries", async ()
     // Both calls should pass auth
     assert(response1.status !== 401, "First call should not be 401");
     assert(response2.status !== 401, "Second call should not be 401");
-    
+
     // Both should reach provider stage (500/502 from httpbin is expected)
-    assert([200, 500, 502].includes(response2.status), `Expected 200/500/502 on second call, got ${response2.status}: ${body2}`);
+    assert(
+      [200, 500, 502].includes(response2.status),
+      `Expected 200/500/502 on second call, got ${response2.status}: ${body2}`,
+    );
   } finally {
     await cleanupTestData(seed.orgId);
   }
