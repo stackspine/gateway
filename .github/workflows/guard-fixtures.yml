@@ -19,12 +19,18 @@ jobs:
   fixtures:
     name: Run guard fixture library
     runs-on: ubuntu-latest
-    defaults:
-      run:
-        working-directory: gateway-oss
     steps:
       - uses: actions/checkout@v4
       - name: Install ripgrep
         run: sudo apt-get update && sudo apt-get install -y ripgrep
+      - name: Resolve OSS root
+        id: root
+        run: |
+          if [ -d gateway-oss ]; then
+            echo "root=gateway-oss" >> "$GITHUB_OUTPUT"
+          else
+            echo "root=." >> "$GITHUB_OUTPUT"
+          fi
       - name: Validate fixtures
+        working-directory: ${{ steps.root.outputs.root }}
         run: bash scripts/run-guard-fixtures.sh
