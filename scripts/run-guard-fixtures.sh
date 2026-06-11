@@ -21,6 +21,24 @@ if [[ ! -x "${GUARD}" ]]; then
   chmod +x "${GUARD}" || true
 fi
 
+# ---------------------------------------------------------------------------
+# Rehydrate fixtures into a staging dir.
+#
+# Credential-shaped fixture bodies are stored base64-encoded (*.b64) in the
+# repo so that history-redaction passes (git filter-repo --replace-text) and
+# push-protection scanners can never rewrite them into ***REDACTED*** strings
+# — which previously made the fail/ fixtures false-negative in the public
+# repo ("expected exit 1, got 0"). We decode the real key-shaped bytes here,
+# at test time only, into a throwaway temp dir.
+# ---------------------------------------------------------------------------
+STAGING="$(mktemp -d -t guard-fixtures-XXXXXX)"
+trap 'rm -rf "${STAGING}"' EXIT
+cp -R "${FIXTURES}/." "${STAGING}/"
+while IFS= read -r -d '' b64; do
+  base64 --decode < "${b64}" > "${b64%.b64}"
+  rm -f "${b64}"
+done < <(find "${STAGING}" -type f -name '*.b64' -print0)
+
 # CI diagnostics: shows what scanner+version the runner has, and confirms the
 # canary fixture is actually on disk with expected content. Silent locally
 # unless you set RUN_GUARD_DEBUG=1.
@@ -29,9 +47,10 @@ if [[ "${CI:-}" == "true" || "${RUN_GUARD_DEBUG:-0}" == "1" ]]; then
   command -v rg >/dev/null && rg --version | head -1 || echo "rg: not installed"
   grep --version | head -1
   echo "FIXTURES=${FIXTURES}"
-  canary="${FIXTURES}/fail/anthropic-key"
+  echo "STAGING=${STAGING}"
+  canary="${STAGING}/fail/anthropic-key"
   if [[ -d "${canary}" ]]; then
-    echo "canary fixture contents:"
+    echo "canary fixture contents (rehydrated):"
     ls -la "${canary}" | sed 's/^/  /'
     for f in "${canary}"/*; do
       echo "  --- ${f} ---"
@@ -68,14 +87,14 @@ run_case() {
 }
 
 echo "── PASS fixtures (must exit 0) ──"
-for d in "${FIXTURES}/pass"/*/; do
+for d in "${STAGING}/pass"/*/; do
   [[ -d "${d}" ]] || continue
   run_case "${d%/}" 0 "pass/$(basename "${d}")"
 done
 
 echo ""
 echo "── FAIL fixtures (must exit 1) ──"
-for d in "${FIXTURES}/fail"/*/; do
+for d in "${STAGING}/fail"/*/; do
   [[ -d "${d}" ]] || continue
   run_case "${d%/}" 1 "fail/$(basename "${d}")"
 done

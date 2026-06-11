@@ -1,2 +1,0 @@
-# GitHub server-to-server token (matches gh[ousr]_ pattern)
-GITHUB_TOKEN=***REDACTED-GITHUB-TOKEN***
