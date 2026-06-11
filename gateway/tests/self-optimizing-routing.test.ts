@@ -66,7 +66,11 @@ async function cleanupTestData(orgId: string): Promise<void> {
 // Tests
 // ============================================================================
 
-Deno.test({ name: "Self-Optimizing: Returns empty results when no tasks have auto_optimize enabled", ignore: !hasEnv }, async () => {
+Deno.test({
+  name:
+    "Self-Optimizing: Returns empty results when no tasks have auto_optimize enabled",
+  ignore: !hasEnv,
+}, async () => {
   const response = await fetch(OPTIMIZE_URL, {
     method: "POST",
     headers: {
@@ -83,7 +87,10 @@ Deno.test({ name: "Self-Optimizing: Returns empty results when no tasks have aut
   assert(body.message || body.success, "Should return success or message");
 });
 
-Deno.test({ name: "Self-Optimizing: Skips task with insufficient call logs (<50)", ignore: !hasEnv }, async () => {
+Deno.test({
+  name: "Self-Optimizing: Skips task with insufficient call logs (<50)",
+  ignore: !hasEnv,
+}, async () => {
   const seed = await seedTestData({
     autoOptimizeRouting: true,
     secondModel: { costPerInputToken: 0.000001, costPerOutputToken: 0.000003 },
@@ -120,7 +127,10 @@ Deno.test({ name: "Self-Optimizing: Skips task with insufficient call logs (<50)
   }
 });
 
-Deno.test({ name: "Self-Optimizing: Processes task with sufficient data and 2+ routes", ignore: !hasEnv }, async () => {
+Deno.test({
+  name: "Self-Optimizing: Processes task with sufficient data and 2+ routes",
+  ignore: !hasEnv,
+}, async () => {
   // Seed with enough logs: one model with high success, one with lower
   const seed = await seedTestData({
     autoOptimizeRouting: true,
@@ -160,7 +170,10 @@ Deno.test({ name: "Self-Optimizing: Processes task with sufficient data and 2+ r
   }
 });
 
-Deno.test({ name: "Self-Optimizing: Respects max ±15 weight delta guardrail", ignore: !hasEnv }, async () => {
+Deno.test({
+  name: "Self-Optimizing: Respects max ±15 weight delta guardrail",
+  ignore: !hasEnv,
+}, async () => {
   // Seed with extreme performance differential to test clamping
   const seed = await seedTestData({
     autoOptimizeRouting: true,
