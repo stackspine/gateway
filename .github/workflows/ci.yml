@@ -26,7 +26,7 @@ jobs:
       - name: Lint
         run: deno lint
       - name: Unit tests
-        run: deno test --allow-env --allow-net --ignore=tests/e2e-smoke.test.ts --ignore=tests/invoke.test.ts
+        run: deno test --allow-env --allow-net --allow-read --ignore=tests/e2e-smoke.test.ts --ignore=tests/invoke.test.ts
 
   docker-build:
     name: Docker Build
