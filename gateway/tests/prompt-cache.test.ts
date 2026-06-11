@@ -47,7 +47,7 @@ async function seedTestData(cacheEnabled: boolean, ttlMinutes = 60) {
     name: "Cache Test Task",
     system_prompt: "You are a test assistant.",
   }).select("id").single();
-  taskId = task!.id;
+  _taskId = task!.id;
 
   // Create API key
   apiKey = `sk_test_${crypto.randomUUID().replace(/-/g, "")}`;
