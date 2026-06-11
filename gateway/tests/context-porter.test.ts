@@ -11,8 +11,9 @@ import {
   assertExists as _assertExists,
 } from "https://deno.land/std@0.224.0/assert/mod.ts";
 
-const SUPABASE_URL = Deno.env.get("VITE_SUPABASE_URL")!;
-const SUPABASE_ANON_KEY = Deno.env.get("VITE_SUPABASE_PUBLISHABLE_KEY")!;
+const SUPABASE_URL = Deno.env.get("VITE_SUPABASE_URL") ?? "";
+const SUPABASE_ANON_KEY = Deno.env.get("VITE_SUPABASE_PUBLISHABLE_KEY") ?? "";
+const hasEnv = SUPABASE_URL !== "" && SUPABASE_ANON_KEY !== "";
 
 const INVOKE_URL = `${SUPABASE_URL}/functions/v1/invoke`;
 const TEST_INVOKE_URL = `${SUPABASE_URL}/functions/v1/test-invoke`;
@@ -70,7 +71,7 @@ function generateLongMessage(targetChars: number): string {
 // Tests
 // ============================================================================
 
-Deno.test("Context Porter: Short messages pass through without compression", async () => {
+Deno.test({ name: "Context Porter: Short messages pass through without compression", ignore: !hasEnv }, async () => {
   // Default model has 128k context window — a short message won't trigger compression
   const seed = await seedTestData();
   try {
@@ -105,7 +106,7 @@ Deno.test("Context Porter: Short messages pass through without compression", asy
   }
 });
 
-Deno.test("Context Porter: Large message set triggers compression for small context window model", async () => {
+Deno.test({ name: "Context Porter: Large message set triggers compression for small context window model", ignore: !hasEnv }, async () => {
   // Seed with a model that has a very small context window (500 tokens ≈ 2000 chars)
   const seed = await seedTestData({
     contextWindowTokens: 500,
@@ -163,7 +164,7 @@ Deno.test("Context Porter: Large message set triggers compression for small cont
   }
 });
 
-Deno.test("Context Porter: Session-based compression caches summaries", async () => {
+Deno.test({ name: "Context Porter: Session-based compression caches summaries", ignore: !hasEnv }, async () => {
   // Seed with small context window
   const seed = await seedTestData({
     contextWindowTokens: 500,
