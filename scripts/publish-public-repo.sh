@@ -88,6 +88,28 @@ say "Rewriting history (subdirectory + path/secret scrubs)"
   run "git filter-repo --force --mailmap '${CONFIG_STASH}/mailmap'"
 )
 
+# ---------- 4b. Restore guard fixtures post-redaction ----------
+# The --replace-text pass above also scrubs the credential-shaped strings
+# inside tests/fixtures/public-repo-guard/fail/*/leak.txt — which makes the
+# fixture suite false-negative in CI ("expected exit 1, got 0"). Restore the
+# fixture tree from the monorepo source and commit it as the final step so
+# guard.sh in CI sees real key-shaped content again.
+say "Restoring guard fixtures after redaction pass"
+FIXTURES_SRC="${OSS_ROOT}/tests/fixtures/public-repo-guard"
+if [[ -d "${FIXTURES_SRC}" ]]; then
+  run "rm -rf '${WORKDIR}/tests/fixtures/public-repo-guard'"
+  run "mkdir -p '${WORKDIR}/tests/fixtures'"
+  run "cp -R '${FIXTURES_SRC}' '${WORKDIR}/tests/fixtures/'"
+  (
+    cd "${WORKDIR}"
+    run "git add tests/fixtures/public-repo-guard"
+    # Only commit if there are actual changes (idempotent re-publish).
+    if [[ "${DRY_RUN}" -eq 1 ]] || ! git diff --cached --quiet; then
+      run "git -c user.email=publish@stackspine.dev -c user.name='StackSpine Publish' commit -m 'fixtures: restore guard leak.txt after redaction pass'"
+    fi
+  )
+fi
+
 # ---------- 5. Final guard pass on rewritten worktree ----------
 say "Guard pass on rewritten worktree"
 run "bash '${CONFIG_STASH}/guard.sh' '${WORKDIR}'"

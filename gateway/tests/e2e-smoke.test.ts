@@ -199,7 +199,7 @@ Deno.test("E2E: Usage headers present for free-tier org", async () => {
         messages: [{ role: "user", content: "hello" }],
       }),
     });
-    const body = await response.text();
+    const _body = await response.text();
 
     // Usage headers are only present on successful (200) responses
     // With httpbin as provider we get 502, so check conditionally

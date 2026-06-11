@@ -18,7 +18,7 @@ const supabase = hasServiceKey
  */
 const TEST_PREFIX = "cache_test_";
 let orgId: string;
-let taskId: string;
+let _taskId: string;
 let apiKey: string;
 
 async function hashKey(key: string): Promise<string> {

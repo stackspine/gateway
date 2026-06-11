@@ -388,7 +388,6 @@ serve(async (req) => {
     //   the task-scoped projection of monthly spend by scope_id.
     // ========================================================================
 
-    // deno-lint-ignore no-explicit-any
     const { data: ctx, error: ctxError } = await supabase.rpc(
       "resolve_invoke_context",
       {
@@ -1347,7 +1346,7 @@ serve(async (req) => {
           });
         }
       }
-    } catch (e) {
+    } catch (_e) {
       console.log("No valid initial route found, trying fallbacks");
     }
 
