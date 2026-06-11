@@ -87,14 +87,14 @@ run_case() {
 }
 
 echo "── PASS fixtures (must exit 0) ──"
-for d in "${FIXTURES}/pass"/*/; do
+for d in "${STAGING}/pass"/*/; do
   [[ -d "${d}" ]] || continue
   run_case "${d%/}" 0 "pass/$(basename "${d}")"
 done
 
 echo ""
 echo "── FAIL fixtures (must exit 1) ──"
-for d in "${FIXTURES}/fail"/*/; do
+for d in "${STAGING}/fail"/*/; do
   [[ -d "${d}" ]] || continue
   run_case "${d%/}" 1 "fail/$(basename "${d}")"
 done
