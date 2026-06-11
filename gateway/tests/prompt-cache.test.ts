@@ -18,7 +18,7 @@ const supabase = hasServiceKey
  */
 const TEST_PREFIX = "cache_test_";
 let orgId: string;
-let taskId: string;
+let _taskId: string;
 let apiKey: string;
 
 async function hashKey(key: string): Promise<string> {
@@ -47,7 +47,7 @@ async function seedTestData(cacheEnabled: boolean, ttlMinutes = 60) {
     name: "Cache Test Task",
     system_prompt: "You are a test assistant.",
   }).select("id").single();
-  taskId = task!.id;
+  _taskId = task!.id;
 
   // Create API key
   apiKey = `sk_test_${crypto.randomUUID().replace(/-/g, "")}`;

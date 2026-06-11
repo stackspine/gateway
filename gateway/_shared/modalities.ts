@@ -290,7 +290,7 @@ export async function callImage(
 
   try {
     let body: string;
-    let headers: Record<string, string> = {
+    const headers: Record<string, string> = {
       "Content-Type": "application/json",
     };
 
