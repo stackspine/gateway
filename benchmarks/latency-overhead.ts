@@ -143,14 +143,17 @@ async function runIteration() {
   projectCallCost(sampleProfile, 350, 150, "openai");
   computeCost(sampleProfile, { input_tokens: 350, output_tokens: 150 }, "openai");
 
-  // 3. Route selection + circuit breaker
+  // 3. Route selection + circuit breaker (selectRoute evaluates provider health internally)
   const fullText = sampleMessages.map((m) => m.content).join("\n");
   const routeCtx = {
     metadata: { task_key: "summarize", environment: "production" },
+    message_count: sampleMessages.length,
+    estimated_tokens: 500,
+    time_utc_hour: new Date().getUTCHours(),
+    task_key: "summarize",
+    region: null,
   };
   selectRoute(sampleRoutes as any, routeCtx as any);
-  isCircuitOpen(sampleRoutes[0].provider as any);
-  getCircuitState(sampleRoutes[0].provider as any);
 
   // 4. Guardrail scans (run each rule type)
   const topicResult = scanForTopics(fullText, ["finance", "CFO", "spending"]);
