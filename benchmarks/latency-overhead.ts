@@ -191,6 +191,7 @@ async function main() {
   times.sort((a, b) => a - b);
 
   const stats = {
+    measured_at: new Date().toISOString(),
     iterations: ITERATIONS,
     p50: percentile(times, 50),
     p95: percentile(times, 95),
