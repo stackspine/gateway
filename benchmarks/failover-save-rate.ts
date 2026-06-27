@@ -75,7 +75,8 @@ async function cleanupTestData(orgId: string): Promise<void> {
 }
 
 async function addFallbackRoute(
-  supabase: ReturnType<typeof createClient>,
+  // deno-lint-ignore no-explicit-any
+  supabase: any,
   seed: SeedResult,
 ): Promise<{ providerId: string; modelProfileId: string; routeId: string }> {
   const { data: provider, error: pErr } = await supabase.from("providers").insert({
@@ -91,7 +92,7 @@ async function addFallbackRoute(
 
   const { data: model, error: mErr } = await supabase.from("model_profiles").insert({
     org_id: seed.orgId,
-    provider_id: provider.id as string,
+    provider_id: provider.id,
     label: "failover-fallback-model",
     provider_model_name: "failover-model",
     cost_per_input_token: 0.00001,
@@ -103,24 +104,26 @@ async function addFallbackRoute(
   const { data: route, error: rErr } = await supabase.from("routes").insert({
     org_id: seed.orgId,
     task_id: seed.taskId,
-    model_profile_id: model.id as string,
+    model_profile_id: model.id,
     strategy: "fallback",
     is_active: true,
     weight: 100,
   }).select("id").single();
   if (rErr || !route) throw new Error(`Failed to insert fallback route: ${rErr?.message}`);
 
-  return { providerId: provider.id as string, modelProfileId: model.id as string, routeId: route.id as string };
+  return { providerId: provider.id, modelProfileId: model.id, routeId: route.id };
 }
 
-async function makeFailingProvider(supabase: ReturnType<typeof createClient>, providerId: string) {
+// deno-lint-ignore no-explicit-any
+async function makeFailingProvider(supabase: any, providerId: string) {
   const { error } = await supabase.from("providers").update({
     base_url: "https://httpbin.org/status/500",
   }).eq("id", providerId);
   if (error) throw new Error(`Failed to update primary provider: ${error.message}`);
 }
 
-async function resetProviderCircuit(supabase: ReturnType<typeof createClient>, providerId: string) {
+// deno-lint-ignore no-explicit-any
+async function resetProviderCircuit(supabase: any, providerId: string) {
   await supabase.from("providers").update({
     consecutive_failures: 0,
     circuit_opened_at: null,
