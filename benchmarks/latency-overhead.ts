@@ -21,8 +21,6 @@
 
 import { timingSafeEqual } from "https://deno.land/std@0.168.0/crypto/timing_safe_equal.ts";
 import {
-  getCircuitState,
-  isCircuitOpen,
   selectRoute,
 } from "../gateway/_shared/routing.ts";
 import {
