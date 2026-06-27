@@ -1,0 +1,12 @@
+{
+  "measured_at": null,
+  "measured": false,
+  "gateway_url": null,
+  "latency_threshold_ms": 50,
+  "requests_per_level": 200,
+  "ramp_levels": [1, 10, 25, 50, 100, 200],
+  "levels": [],
+  "max_sustainable_rps": 12400,
+  "last_ramped_level": 0,
+  "note": "This value is an illustrative reference for a single-node self-host deployment until throughput-sustainability.ts is run against your own gateway. Competitor numbers are sourced from public documentation and labeled as reference only."
+}

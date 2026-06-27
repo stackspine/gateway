@@ -1,0 +1,14 @@
+{
+  "measured_at": null,
+  "measured": false,
+  "gateway_url": null,
+  "scenario": "primary custom_http returns 500; fallback custom_http returns 200",
+  "total_requests": 100,
+  "pre_failure_warmup": 5,
+  "failures_before_fallback_ready": 3,
+  "mttd_ms": 230,
+  "save_rate_pct": 99.94,
+  "post_failure_successes": 0,
+  "post_failure_failures": 0,
+  "note": "These values are illustrative references until failover-save-rate.ts is run against your own gateway. The numbers model the circuit-breaker behavior (3 consecutive failures to open) and are not vendor-specific measurements."
+}
