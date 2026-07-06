@@ -13,7 +13,7 @@ import {
   __resetPolicyCacheForTests,
   type PolicySnapshotPayload,
   type PolicySnapshotRow,
-} from "./policy-cache.ts";
+} from "../_shared/policy-cache.ts";
 
 const SIGNING_KEY = "test-signing-key";
 

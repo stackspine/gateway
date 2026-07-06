@@ -14,7 +14,7 @@ import { createClient } from "https://esm.sh/@supabase/supabase-js@2.49.1";
 import {
   signSnapshotPayload,
   type PolicySnapshotPayload,
-} from "../invoke/_shared/policy-cache.ts";
+} from "../_shared/policy-cache.ts";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
