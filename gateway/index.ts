@@ -43,6 +43,11 @@ import {
   scanForProfanity,
   scanForTopics,
 } from "./_shared/guardrails.ts";
+import {
+  decideDegradedRequest,
+  degradedResponseHeaders,
+  loadSnapshot,
+} from "./_shared/policy-cache.ts";
 
 // ============================================================================
 // Utilities
@@ -400,12 +405,79 @@ serve(async (req) => {
     ) as { data: any; error: any };
 
     if (ctxError || !ctx) {
+      // Control-plane RPC unreachable — evaluate the degradation policy.
+      // See docs/degradation.md for the decision matrix.
       console.error("resolve_invoke_context RPC failed:", ctxError);
+
+      const { data: keyRow, error: keyErr } = await supabase
+        .from("api_keys")
+        .select("org_id, key_hash")
+        .eq("key_prefix", keyPrefix)
+        .maybeSingle();
+
+      if (keyErr || !keyRow) {
+        return new Response(
+          JSON.stringify({ error: "control_plane_unavailable", code: "CONTROL_PLANE_UNAVAILABLE" }),
+          { status: 503, headers: { ...responseHeaders, "Content-Type": "application/json" } },
+        );
+      }
+      if (!isInternalCall && !secureCompare(providedKeyHash, keyRow.key_hash)) {
+        return new Response(
+          JSON.stringify({ error: "Invalid API key" }),
+          { status: 401, headers: { ...responseHeaders, "Content-Type": "application/json" } },
+        );
+      }
+
+      const signingKey = Deno.env.get("POLICY_SNAPSHOT_SIGNING_KEY") ?? "";
+      const snapshot = await loadSnapshot(supabase, keyRow.org_id, signingKey);
+      const decision = decideDegradedRequest(snapshot, task_key);
+
+      supabase.from("compliance_events").insert({
+        org_id: keyRow.org_id,
+        event_type: "control_plane_degraded",
+        details: {
+          task_key,
+          reason: decision.reason,
+          age_seconds: decision.ageSeconds,
+          snapshot_version: snapshot?.version ?? null,
+          allowed: decision.allow,
+        },
+      }).then(() => {}).catch((e: Error) =>
+        console.error("degraded compliance_events insert failed:", e)
+      );
+
+      if (!decision.allow || !snapshot) {
+        return new Response(
+          JSON.stringify({
+            error: "control_plane_unavailable",
+            code: "CONTROL_PLANE_UNAVAILABLE",
+            reason: decision.allow ? "no_cache" : decision.reason,
+          }),
+          {
+            status: (!decision.allow && "status" in decision ? decision.status : 503),
+            headers: {
+              ...responseHeaders,
+              ...(snapshot ? degradedResponseHeaders(snapshot, "cache") : {}),
+              "Content-Type": "application/json",
+            },
+          },
+        );
+      }
+
       return new Response(
-        JSON.stringify({ error: "Internal server error" }),
+        JSON.stringify({
+          trace_id: traceId,
+          degraded: true,
+          reason: decision.reason,
+          message: "served from local policy snapshot; downstream provider call skipped in degraded mode",
+        }),
         {
-          status: 500,
-          headers: { ...responseHeaders, "Content-Type": "application/json" },
+          status: 202,
+          headers: {
+            ...responseHeaders,
+            ...degradedResponseHeaders(snapshot, decision.reason === "fail_open" ? "fail_open" : "cache"),
+            "Content-Type": "application/json",
+          },
         },
       );
     }
