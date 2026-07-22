@@ -27,6 +27,21 @@ serve(async (req) => {
   const supabaseUrl = Deno.env.get("SUPABASE_URL")!;
   const serviceKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
   const signingKey = Deno.env.get("POLICY_SNAPSHOT_SIGNING_KEY") ?? "";
+  const cronSecret = Deno.env.get("CRON_SECRET") ?? "";
+
+  // AuthZ: require service-role bearer or internal scheduler secret
+  const authHeader = req.headers.get("Authorization") || "";
+  const token = authHeader.replace(/^Bearer\s+/i, "").trim();
+  const providedSecret = req.headers.get("x-cron-secret") || "";
+  const authorized =
+    (token && token === serviceKey) ||
+    (cronSecret && providedSecret === cronSecret);
+  if (!authorized) {
+    return new Response(
+      JSON.stringify({ error: "Forbidden" }),
+      { status: 403, headers: { ...corsHeaders, "Content-Type": "application/json" } },
+    );
+  }
 
   if (!signingKey) {
     return new Response(
@@ -34,6 +49,7 @@ serve(async (req) => {
       { status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" } },
     );
   }
+
 
   const supabase = createClient(supabaseUrl, serviceKey);
 
