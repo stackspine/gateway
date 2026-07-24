@@ -1,6 +1,6 @@
 /**
  * Unit tests for the edge-local policy-cache module.
- * Run with: deno test supabase/functions/invoke/_shared/policy-cache.test.ts
+ * Run with: deno test gateway/tests/policy-cache.test.ts
  */
 
 import { assertEquals, assert } from "https://deno.land/std@0.168.0/testing/asserts.ts";
